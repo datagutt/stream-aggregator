@@ -2,14 +2,14 @@
 
 ## Prerequisites
 
-- Rust 1.75+ (install from https://rustup.rs)
-- Twitch API credentials (get from https://dev.twitch.tv/console/apps)
+- Rust 1.75+ (install from <https://rustup.rs>)
+- Twitch API credentials (get from <https://dev.twitch.tv/console/apps>)
 
 ## Getting Started
 
 ### 1. Get Twitch API Credentials
 
-1. Go to https://dev.twitch.tv/console/apps
+1. Go to <https://dev.twitch.tv/console/apps>
 2. Click "Register Your Application"
 3. Fill in:
    - Name: "My StreamAggregator"
@@ -51,19 +51,22 @@ cargo run --release
 
 ### 3. Test the API
 
-Once the server is running (default: http://127.0.0.1:8080), try these commands:
+Once the server is running (default: <http://127.0.0.1:8080>), try these commands:
 
 #### Health Check
+
 ```bash
 curl http://127.0.0.1:8080/health
 ```
 
 #### List Platforms
+
 ```bash
 curl http://127.0.0.1:8080/api/v1/platforms
 ```
 
 #### Add a Streamer to Track
+
 ```bash
 # Without authentication (if no API keys set)
 curl -X POST http://127.0.0.1:8080/api/v1/streamers \
@@ -84,11 +87,13 @@ curl -X POST http://127.0.0.1:8080/api/v1/streamers \
 ```
 
 #### List Tracked Streamers
+
 ```bash
 curl http://127.0.0.1:8080/api/v1/streamers
 ```
 
 #### Get Stream Information
+
 ```bash
 # This will fetch live data from Twitch
 curl http://127.0.0.1:8080/api/v1/streams
@@ -118,6 +123,16 @@ export TWITCH_CLIENT_ID="..."
 export TWITCH_CLIENT_SECRET="..."
 
 cargo run --release
+```
+
+### SQLite
+
+```bash
+# Anyone can read and write
+export TWITCH_CLIENT_ID="..."
+export TWITCH_CLIENT_SECRET="..."
+
+cargo run --features sqlite-store -- --store-backend sqlite --database-url streams.db
 ```
 
 ### Production Mode (Protected Writes)
@@ -205,16 +220,19 @@ fetch('http://your-server:8080/api/v1/streamers', {
 ## API Endpoints
 
 ### Public Endpoints (Always Accessible)
+
 - `GET /health` - Health check
 - `GET /api/v1/health` - Health check (alias)
 
 ### Read Endpoints (Public by default, unless `--require-auth-all` is set)
+
 - `GET /api/v1/streams` - List all streams
 - `GET /api/v1/streams/:id` - Get stream by ID
 - `GET /api/v1/streamers` - List tracked streamers
 - `GET /api/v1/platforms` - List supported platforms
 
 ### Write Endpoints (Require API key if configured)
+
 - `POST /api/v1/streamers` - Add streamer to track
 - `DELETE /api/v1/streamers/:platform/:user_id` - Remove tracked streamer
 
@@ -239,6 +257,7 @@ cargo build --release
 ### "No providers configured" Error
 
 Make sure you've set your Twitch credentials:
+
 ```bash
 export TWITCH_CLIENT_ID="your_client_id"
 export TWITCH_CLIENT_SECRET="your_client_secret"
@@ -247,13 +266,15 @@ export TWITCH_CLIENT_SECRET="your_client_secret"
 ### "Twitch provider health check failed"
 
 Your credentials may be invalid. Double-check:
+
 1. Client ID and Secret are correct
 2. You're using the right credentials (not OAuth tokens)
-3. Your app is registered at https://dev.twitch.tv/console/apps
+3. Your app is registered at <https://dev.twitch.tv/console/apps>
 
 ### Port Already in Use
 
 Change the port:
+
 ```bash
 cargo run --release -- --port 3000
 ```

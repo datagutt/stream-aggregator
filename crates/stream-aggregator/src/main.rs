@@ -6,10 +6,9 @@ use std::sync::Arc;
 use tracing::info;
 use tracing_subscriber::prelude::*;
 
-use stream_aggregator::{AppConfig, ProviderRegistry};
+use stream_aggregator::{AppConfig, ProviderRegistry, StoreRegistry};
 use stream_aggregator_api::{create_router_with_auth, AuthConfig};
 use stream_aggregator_scheduler::{Scheduler, SchedulerConfig};
-use stream_aggregator_store::MemoryStore;
 
 /// StreamAggregator CLI
 #[derive(Parser)]
@@ -47,6 +46,14 @@ struct Cli {
     /// Twitch Client Secret
     #[arg(long, env = "TWITCH_CLIENT_SECRET")]
     twitch_client_secret: Option<String>,
+
+    /// Storage backend type (memory, sqlite)
+    #[arg(long, default_value = "memory", env = "STORE_BACKEND")]
+    store_backend: String,
+
+    /// Database URL (for sqlite/postgres)
+    #[arg(long, env = "DATABASE_URL")]
+    database_url: Option<String>,
 }
 
 #[tokio::main]
@@ -75,11 +82,13 @@ async fn main() -> Result<()> {
         cli.scrape_interval_secs,
         cli.twitch_client_id,
         cli.twitch_client_secret,
+        cli.store_backend,
+        cli.database_url,
     );
 
     // Create store
-    let store = Arc::new(MemoryStore::new());
-    info!("✅ Memory store initialized");
+    let store_registry = StoreRegistry::register(&config.store).await?;
+    let store = store_registry.get();
 
     // Register all providers
     let registry = ProviderRegistry::register_all(&config.providers).await?;

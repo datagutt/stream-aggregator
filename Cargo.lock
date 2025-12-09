@@ -2429,6 +2429,7 @@ dependencies = [
  "serde_json",
  "sqlx",
  "stream-aggregator-core",
+ "tempfile",
  "thiserror",
  "tokio",
  "tracing",

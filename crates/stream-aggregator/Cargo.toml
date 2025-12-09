@@ -10,8 +10,11 @@ name = "stream-aggregator"
 path = "src/main.rs"
 
 [features]
-default = ["provider-twitch"]
+default = ["provider-twitch", "memory-store"]
 provider-twitch = ["stream-aggregator-provider-twitch"]
+memory-store = ["stream-aggregator-store/memory"]
+sqlite-store = ["stream-aggregator-store/sqlite"]
+all-stores = ["memory-store", "sqlite-store"]
 
 [dependencies]
 # Internal crates

@@ -16,6 +16,9 @@ pub struct AppConfig {
     
     #[serde(default)]
     pub providers: ProvidersConfig,
+    
+    #[serde(default)]
+    pub store: StoreConfig,
 }
 
 impl Default for AppConfig {
@@ -25,6 +28,7 @@ impl Default for AppConfig {
             auth: AuthSettings::default(),
             scheduler: SchedulerConfig::default(),
             providers: ProvidersConfig::default(),
+            store: StoreConfig::default(),
         }
     }
 }
@@ -83,6 +87,25 @@ impl Default for SchedulerConfig {
     }
 }
 
+/// Store configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StoreConfig {
+    /// Storage backend type ("memory", "sqlite", "postgres")
+    pub backend: String,
+    
+    /// Database connection URL (for sqlite/postgres)
+    pub database_url: Option<String>,
+}
+
+impl Default for StoreConfig {
+    fn default() -> Self {
+        Self {
+            backend: "memory".to_string(),
+            database_url: None,
+        }
+    }
+}
+
 /// Provider configurations
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ProvidersConfig {
@@ -123,6 +146,8 @@ impl AppConfig {
         scrape_interval_secs: u64,
         twitch_client_id: Option<String>,
         twitch_client_secret: Option<String>,
+        store_backend: String,
+        database_url: Option<String>,
     ) -> Self {
         let api_keys = api_keys
             .map(|keys| keys.split(',').map(|s| s.trim().to_string()).collect())
@@ -144,6 +169,10 @@ impl AppConfig {
                     client_id: twitch_client_id,
                     client_secret: twitch_client_secret,
                 },
+            },
+            store: StoreConfig {
+                backend: store_backend,
+                database_url,
             },
         }
     }
