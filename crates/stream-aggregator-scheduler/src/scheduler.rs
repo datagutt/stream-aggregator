@@ -60,7 +60,15 @@ impl Scheduler {
             self.config.scrape_interval_secs, self.config.max_concurrent
         );
 
+        // Perform initial scrape immediately on startup
+        info!("🔄 Performing initial scrape...");
+        if let Err(e) = self.scrape_all().await {
+            error!("Initial scrape failed: {}", e);
+        }
+
         let mut ticker = interval(Duration::from_secs(self.config.scrape_interval_secs));
+        // Skip the first tick since we just did an initial scrape
+        ticker.tick().await;
 
         loop {
             ticker.tick().await;
