@@ -12,6 +12,9 @@ pub struct AppConfig {
     pub auth: AuthSettings,
     
     #[serde(default)]
+    pub scheduler: SchedulerConfig,
+    
+    #[serde(default)]
     pub providers: ProvidersConfig,
 }
 
@@ -20,6 +23,7 @@ impl Default for AppConfig {
         Self {
             server: ServerConfig::default(),
             auth: AuthSettings::default(),
+            scheduler: SchedulerConfig::default(),
             providers: ProvidersConfig::default(),
         }
     }
@@ -56,6 +60,25 @@ impl Default for AuthSettings {
         Self {
             api_keys: Vec::new(),
             require_all: false,
+        }
+    }
+}
+
+/// Scheduler configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SchedulerConfig {
+    /// Scrape interval in seconds
+    pub interval_secs: u64,
+    
+    /// Maximum concurrent scrape tasks
+    pub max_concurrent: usize,
+}
+
+impl Default for SchedulerConfig {
+    fn default() -> Self {
+        Self {
+            interval_secs: 300, // 5 minutes
+            max_concurrent: 10,
         }
     }
 }
@@ -97,6 +120,7 @@ impl AppConfig {
         port: u16,
         api_keys: Option<String>,
         require_auth_all: bool,
+        scrape_interval_secs: u64,
         twitch_client_id: Option<String>,
         twitch_client_secret: Option<String>,
     ) -> Self {
@@ -109,6 +133,10 @@ impl AppConfig {
             auth: AuthSettings {
                 api_keys,
                 require_all: require_auth_all,
+            },
+            scheduler: SchedulerConfig {
+                interval_secs: scrape_interval_secs,
+                max_concurrent: 10,
             },
             providers: ProvidersConfig {
                 twitch: TwitchProviderConfig {

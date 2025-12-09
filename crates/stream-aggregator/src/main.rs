@@ -6,8 +6,9 @@ use std::sync::Arc;
 use tracing::info;
 use tracing_subscriber::prelude::*;
 
-use stream_aggregator::{ AppConfig, ProviderRegistry};
+use stream_aggregator::{AppConfig, ProviderRegistry};
 use stream_aggregator_api::{create_router_with_auth, AuthConfig};
+use stream_aggregator_scheduler::{Scheduler, SchedulerConfig};
 use stream_aggregator_store::MemoryStore;
 
 /// StreamAggregator CLI
@@ -34,6 +35,10 @@ struct Cli {
     /// Require authentication for all requests (including reads)
     #[arg(long, env = "REQUIRE_AUTH_ALL")]
     require_auth_all: bool,
+
+    /// Scrape interval in seconds
+    #[arg(long, default_value = "300", env = "SCRAPE_INTERVAL_SECS")]
+    scrape_interval_secs: u64,
 
     /// Twitch Client ID
     #[arg(long, env = "TWITCH_CLIENT_ID")]
@@ -67,6 +72,7 @@ async fn main() -> Result<()> {
         cli.port,
         cli.api_keys,
         cli.require_auth_all,
+        cli.scrape_interval_secs,
         cli.twitch_client_id,
         cli.twitch_client_secret,
     );
@@ -76,7 +82,26 @@ async fn main() -> Result<()> {
     info!("✅ Memory store initialized");
 
     // Register all providers
-    let _registry = ProviderRegistry::register_all(&config.providers).await?;
+    let registry = ProviderRegistry::register_all(&config.providers).await?;
+
+    // Start scheduler in background
+    let scheduler_store = store.clone();
+    let providers: Vec<_> = registry.list().iter().cloned().collect();
+    
+    let scheduler_config = SchedulerConfig {
+        scrape_interval_secs: config.scheduler.interval_secs,
+        max_concurrent: config.scheduler.max_concurrent,
+    };
+    
+    let scheduler = Scheduler::new(
+        scheduler_store,
+        providers,
+        scheduler_config,
+    );
+    
+    tokio::spawn(async move {
+        scheduler.run().await;
+    });
 
     // Configure authentication
     let auth_config = if !config.auth.api_keys.is_empty() {

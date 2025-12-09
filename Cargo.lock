@@ -2348,6 +2348,7 @@ dependencies = [
  "stream-aggregator-api",
  "stream-aggregator-core",
  "stream-aggregator-provider-twitch",
+ "stream-aggregator-scheduler",
  "stream-aggregator-store",
  "tokio",
  "toml",
@@ -2407,7 +2408,13 @@ dependencies = [
 name = "stream-aggregator-scheduler"
 version = "0.1.0"
 dependencies = [
+ "chrono",
+ "futures",
  "stream-aggregator-core",
+ "stream-aggregator-store",
+ "thiserror",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

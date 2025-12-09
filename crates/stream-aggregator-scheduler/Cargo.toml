@@ -7,3 +7,9 @@ repository.workspace = true
 
 [dependencies]
 stream-aggregator-core = { path = "../stream-aggregator-core" }
+stream-aggregator-store = { path = "../stream-aggregator-store" }
+tokio = { workspace = true }
+futures = { workspace = true }
+chrono = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
