@@ -3,15 +3,12 @@
 use anyhow::Result;
 use clap::Parser;
 use std::sync::Arc;
-use tracing::{info, error};
+use tracing::info;
 use tracing_subscriber::prelude::*;
 
+use stream_aggregator::{ AppConfig, ProviderRegistry};
 use stream_aggregator_api::{create_router_with_auth, AuthConfig};
-use stream_aggregator_core::PlatformProvider;
 use stream_aggregator_store::MemoryStore;
-
-#[cfg(feature = "provider-twitch")]
-use stream_aggregator_provider_twitch::{TwitchProvider, TwitchConfig};
 
 /// StreamAggregator CLI
 #[derive(Parser)]
@@ -64,66 +61,45 @@ async fn main() -> Result<()> {
 
     info!("🚀 StreamAggregator v{} starting...", env!("CARGO_PKG_VERSION"));
 
+    // Load configuration
+    let config = AppConfig::from_env_and_cli(
+        cli.host,
+        cli.port,
+        cli.api_keys,
+        cli.require_auth_all,
+        cli.twitch_client_id,
+        cli.twitch_client_secret,
+    );
+
     // Create store
     let store = Arc::new(MemoryStore::new());
     info!("✅ Memory store initialized");
 
-    // Initialize providers
-    let mut providers: Vec<Arc<dyn PlatformProvider>> = Vec::new();
-
-    #[cfg(feature = "provider-twitch")]
-    {
-        if let (Some(client_id), Some(client_secret)) = (cli.twitch_client_id, cli.twitch_client_secret) {
-            let config = TwitchConfig::new(client_id, client_secret);
-            let twitch = Arc::new(TwitchProvider::new(config));
-            
-            // Test the connection
-            match twitch.health_check().await {
-                stream_aggregator_core::HealthStatus::Healthy => {
-                    info!("✅ Twitch provider initialized and healthy");
-                    providers.push(twitch);
-                }
-                status => {
-                    error!("❌ Twitch provider health check failed: {:?}", status);
-                    return Err(anyhow::anyhow!("Twitch provider initialization failed"));
-                }
-            }
-        } else {
-            info!("⚠️  Twitch provider disabled (missing credentials)");
-            info!("   Set TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET to enable");
-        }
-    }
-
-    if providers.is_empty() {
-        error!("❌ No providers configured! At least one provider must be enabled.");
-        return Err(anyhow::anyhow!("No providers configured"));
-    }
-
-    info!("✅ {} provider(s) initialized", providers.len());
+    // Register all providers
+    let _registry = ProviderRegistry::register_all(&config.providers).await?;
 
     // Configure authentication
-    let auth_config = if let Some(keys) = cli.api_keys {
-        let api_keys: Vec<String> = keys.split(',').map(|s| s.trim().to_string()).collect();
-        info!("🔒 API authentication enabled with {} key(s)", api_keys.len());
+    let auth_config = if !config.auth.api_keys.is_empty() {
+        info!("🔒 API authentication enabled with {} key(s)", config.auth.api_keys.len());
         
-        let mut config = AuthConfig::new(api_keys);
-        if cli.require_auth_all {
+        let mut auth = AuthConfig::new(config.auth.api_keys);
+        if config.auth.require_all {
             info!("🔒 Requiring authentication for all requests");
-            config = config.require_all();
+            auth = auth.require_all();
         } else {
             info!("🔓 Public read access enabled (GET /streams, GET /platforms)");
         }
-        config
+        auth
     } else {
         info!("🔓 Public access mode (no authentication required)");
         AuthConfig::default()
     };
 
     // Create router
-    let router = create_router_with_auth(store.clone(), auth_config);
+    let router = create_router_with_auth(store, auth_config);
 
     // Start server
-    let addr = format!("{}:{}", cli.host, cli.port);
+    let addr = format!("{}:{}", config.server.host, config.server.port);
     info!("🌐 Starting server on http://{}", addr);
     info!("");
     info!("Available endpoints:");
