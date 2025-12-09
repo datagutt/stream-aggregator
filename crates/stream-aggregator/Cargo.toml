@@ -1,0 +1,37 @@
+[package]
+name = "stream-aggregator"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "stream-aggregator"
+path = "src/main.rs"
+
+[features]
+default = ["provider-twitch"]
+provider-twitch = ["stream-aggregator-provider-twitch"]
+
+[dependencies]
+# Internal crates
+stream-aggregator-core = { path = "../stream-aggregator-core" }
+stream-aggregator-api = { path = "../stream-aggregator-api" }
+stream-aggregator-store = { path = "../stream-aggregator-store" }
+
+# Optional providers
+stream-aggregator-provider-twitch = { path = "../providers/stream-aggregator-provider-twitch", optional = true }
+
+# Runtime & config
+tokio = { workspace = true }
+axum = { workspace = true }
+serde = { workspace = true }
+toml = { workspace = true }
+anyhow = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# CLI
+clap = { version = "4.4", features = ["derive", "env"] }

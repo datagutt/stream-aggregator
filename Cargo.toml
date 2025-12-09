@@ -1,0 +1,89 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/stream-aggregator",
+    "crates/stream-aggregator-core",
+    "crates/stream-aggregator-api",
+    "crates/stream-aggregator-store",
+    "crates/stream-aggregator-scheduler",
+    "crates/providers/stream-aggregator-provider-twitch",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+license = "AGPLv3"
+repository = "https://github.com/datagutt/stream-aggregator"
+
+[workspace.dependencies]
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+
+# HTTP Client
+# wreq is a fork of reqwest with JA3/JA4/HTTP2 fingerprint emulation
+# API-compatible with reqwest, so we use it as the default for ALL platforms
+# This gives us anti-bot bypass capabilities (required for Kick) everywhere
+# https://github.com/0x676e67/wreq
+wreq = { version = "6.0.0-rc.23", features = ["json"] }
+wreq-util = "3.0.0-rc.23"  # Browser emulation presets (Chrome, Safari, Firefox, etc.)
+
+# Web framework
+axum = { version = "0.7", features = ["ws", "macros"] }
+tower = { version = "0.4" }
+tower-http = { version = "0.5", features = ["cors", "trace", "compression-gzip"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+
+# Protocol Buffers (for TikTok WebSocket messages)
+prost = "0.12"
+prost-types = "0.12"
+
+# Database
+sqlx = { version = "0.7", features = ["runtime-tokio", "sqlite", "postgres", "chrono", "uuid"] }
+
+# Caching
+moka = { version = "0.12", features = ["future"] }
+dashmap = "5.5"
+
+# Configuration
+config = { version = "0.14", features = ["toml"] }
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Logging & tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Async utilities
+async-trait = "0.1"
+futures = "0.3"
+
+# WebSocket (for TikTok)
+tokio-tungstenite = { version = "0.21", features = ["rustls-tls-native-roots"] }
+
+# Rate limiting
+governor = "0.6"
+
+# Cryptography (for ID hashing)
+sha2 = "0.10"
+hex = "0.4"
+
+# UUID
+uuid = { version = "1.6", features = ["v4", "serde"] }
+
+# Metrics
+metrics = "0.22"
+metrics-exporter-prometheus = "0.13"
+
+# Testing
+wiremock = "0.6"
+tokio-test = "0.4"

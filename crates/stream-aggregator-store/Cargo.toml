@@ -1,0 +1,28 @@
+[package]
+name = "stream-aggregator-store"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[features]
+default = ["memory"]
+memory = ["dashmap"]
+sqlite = ["sqlx/sqlite"]
+postgres = ["sqlx/postgres"]
+all = ["memory", "sqlite", "postgres"]
+
+[dependencies]
+stream-aggregator-core = { path = "../stream-aggregator-core" }
+tokio = { workspace = true }
+async-trait = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+# Optional dependencies
+dashmap = { workspace = true, optional = true }
+sqlx = { workspace = true, optional = true }
+moka = { workspace = true }

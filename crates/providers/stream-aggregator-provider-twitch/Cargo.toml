@@ -1,0 +1,21 @@
+[package]
+name = "stream-aggregator-provider-twitch"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+stream-aggregator-core = { path = "../../stream-aggregator-core" }
+tokio = { workspace = true }
+wreq = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+async-trait = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+chrono = { workspace = true }
+
+[dev-dependencies]
+wiremock = { workspace = true }
+tokio-test = { workspace = true }

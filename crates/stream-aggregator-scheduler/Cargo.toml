@@ -1,0 +1,9 @@
+[package]
+name = "stream-aggregator-scheduler"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+stream-aggregator-core = { path = "../stream-aggregator-core" }
