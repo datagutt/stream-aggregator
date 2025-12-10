@@ -173,7 +173,21 @@ Add a new streamer to track.
 ```json
 {
   "platform": "twitch",
-  "user_id": "shroud",
+  "username": "shroud",
+  "custom_name": "Shroud Gaming",
+  "group": "fps-pros",
+  "priority": 2,
+  "labels": {
+    "country": "ca",
+    "team": "sentinels"
+  }
+}
+```
+
+```json
+{
+  "platform": "twitch",
+  "user_id": "37402112",
   "custom_name": "Shroud Gaming",
   "group": "fps-pros",
   "priority": 2,
@@ -190,7 +204,7 @@ Add a new streamer to track.
 {
   "data": {
     "platform": "twitch",
-    "user_id": "shroud",
+    "user_id": "37402112",
     "custom_name": "Shroud Gaming",
     "group": "fps-pros",
     "priority": 2,
@@ -648,6 +662,7 @@ Detailed health status (requires authentication if enabled).
 Real-time stream updates via WebSocket.
 
 **Connection:**
+
 ```javascript
 const ws = new WebSocket('ws://localhost:8080/api/v1/ws/streams');
 
