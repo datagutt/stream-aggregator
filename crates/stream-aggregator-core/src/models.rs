@@ -327,6 +327,16 @@ pub struct StreamQuery {
     /// Filter by live status
     pub is_live: Option<bool>,
 
+    /// Filter by group/team name
+    pub group: Option<String>,
+
+    /// Filter by labels (key-value pairs)
+    #[serde(default)]
+    pub labels: HashMap<String, String>,
+
+    /// Search in display name and title
+    pub search: Option<String>,
+
     /// Filter by language
     pub language: Option<String>,
 
@@ -338,6 +348,15 @@ pub struct StreamQuery {
 
     /// Minimum viewer count
     pub min_viewers: Option<u64>,
+
+    /// Maximum viewer count
+    pub max_viewers: Option<u64>,
+
+    /// Sort field: viewers, name, platform, updated
+    pub sort: Option<String>,
+
+    /// Sort order: asc or desc
+    pub order: Option<String>,
 
     /// Pagination: page number (0-indexed)
     pub page: Option<usize>,

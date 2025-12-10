@@ -26,7 +26,7 @@ Retrieve all streams with optional filtering and pagination.
 | `platform` | string | Filter by platform (e.g., `twitch`, `youtube`) |
 | `live` | boolean | Filter by live status (`true` or `false`) |
 | `group` | string | Filter by group/team name |
-| `labels` | string | Filter by labels (format: `key1=value1,key2=value2`) |
+| `labels[key]` | string | Filter by labels (repeat parameter for multiple: `?labels[country]=no&labels[team]=vikings`) |
 | `search` | string | Search in display name and title |
 | `min_viewers` | integer | Minimum viewer count |
 | `max_viewers` | integer | Maximum viewer count |
@@ -88,7 +88,7 @@ curl "http://localhost:8080/api/v1/streams?platform=twitch&sort=viewers&order=de
 curl "http://localhost:8080/api/v1/streams?search=fortnite&live=true"
 
 # Filter by labels
-curl "http://localhost:8080/api/v1/streams?labels=country=no,team=vikings"
+curl "http://localhost:8080/api/v1/streams?labels[country]=no&labels[team]=vikings"
 ```
 
 ---
@@ -137,7 +137,7 @@ Get all tracked streamers.
 | `platform` | string | Filter by platform |
 | `group` | string | Filter by group |
 | `source` | string | Filter by source: `manual` or `discovery` |
-| `labels` | string | Filter by labels |
+| `labels[key]` | string | Filter by labels (repeat parameter for multiple: `?labels[country]=no&labels[team]=vikings`) |
 
 **Response:**
 

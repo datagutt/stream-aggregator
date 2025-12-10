@@ -81,6 +81,41 @@ impl StreamStore for MemoryStore {
                     }
                 }
 
+                // Filter by group (from metadata)
+                if let Some(ref group) = query.group {
+                    if let Some(metadata_group) = stream.metadata.get("group").and_then(|v| v.as_str()) {
+                        if metadata_group != group {
+                            return false;
+                        }
+                    } else {
+                        return false;
+                    }
+                }
+
+                // Filter by labels (from metadata)
+                for (key, value) in &query.labels {
+                    if let Some(metadata_labels) = stream.metadata.get("labels").and_then(|v| v.as_object()) {
+                        if metadata_labels.get(key).and_then(|v| v.as_str()) != Some(value) {
+                            return false;
+                        }
+                    } else {
+                        return false;
+                    }
+                }
+
+                // Search in display name and title
+                if let Some(ref search) = query.search {
+                    let search_lower = search.to_lowercase();
+                    let display_name_match = stream.display_name.to_lowercase().contains(&search_lower);
+                    let title_match = stream.title.as_ref()
+                        .map(|t| t.to_lowercase().contains(&search_lower))
+                        .unwrap_or(false);
+                    
+                    if !display_name_match && !title_match {
+                        return false;
+                    }
+                }
+
                 // Filter by language
                 if let Some(ref language) = query.language {
                     if stream.language.as_ref() != Some(language) {
@@ -109,18 +144,38 @@ impl StreamStore for MemoryStore {
                     }
                 }
 
+                // Filter by maximum viewers
+                if let Some(max_viewers) = query.max_viewers {
+                    if stream.viewer_count.unwrap_or(0) > max_viewers {
+                        return false;
+                    }
+                }
+
                 true
             })
             .collect();
 
         let total = filtered.len();
 
-        // Sort by viewer count (descending), then by display name
+        // Apply sorting
+        let sort_field = query.sort.as_deref().unwrap_or("viewers");
+        let is_ascending = query.order.as_deref().unwrap_or("desc") == "asc";
+
         filtered.sort_by(|a, b| {
-            b.viewer_count
-                .unwrap_or(0)
-                .cmp(&a.viewer_count.unwrap_or(0))
-                .then_with(|| a.display_name.cmp(&b.display_name))
+            let ordering = match sort_field {
+                "name" => a.display_name.cmp(&b.display_name),
+                "platform" => a.platform.cmp(&b.platform),
+                "updated" => a.last_updated.cmp(&b.last_updated),
+                "viewers" | _ => b.viewer_count
+                    .unwrap_or(0)
+                    .cmp(&a.viewer_count.unwrap_or(0)),
+            };
+
+            if is_ascending {
+                ordering
+            } else {
+                ordering.reverse()
+            }
         });
 
         // Pagination

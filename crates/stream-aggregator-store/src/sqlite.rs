@@ -246,33 +246,52 @@ impl StreamStore for SqliteStore {
     async fn get_streams(&self, query: &StreamQuery) -> Result<StreamPage, StoreError> {
         trace!(?query, "Querying streams");
         
+        // Pre-compute search pattern to avoid lifetime issues
+        let search_pattern = query.search.as_ref().map(|s| format!("%{}%", s));
+        
         // Build base query
         let mut sql = "SELECT * FROM streams WHERE 1=1".to_string();
         let mut where_clauses = Vec::new();
         
         // Add filters
-        if let Some(ref platform) = query.platform {
+        if query.platform.is_some() {
             where_clauses.push("platform = ?");
         }
         
-        if let Some(is_live) = query.is_live {
+        if query.is_live.is_some() {
             where_clauses.push("is_live = ?");
         }
         
-        if let Some(ref language) = query.language {
+        if query.group.is_some() {
+            where_clauses.push("json_extract(metadata, '$.group') = ?");
+        }
+        
+        for _ in &query.labels {
+            where_clauses.push("json_extract(metadata, '$.labels') LIKE ?");
+        }
+        
+        if search_pattern.is_some() {
+            where_clauses.push("(display_name LIKE ? OR title LIKE ?)");
+        }
+        
+        if query.language.is_some() {
             where_clauses.push("language = ?");
         }
         
-        if let Some(ref category) = query.category {
+        if query.category.is_some() {
             where_clauses.push("category = ?");
         }
         
-        if let Some(ref tag) = query.tag {
+        if query.tag.is_some() {
             where_clauses.push("tags LIKE ?");
         }
         
-        if let Some(min_viewers) = query.min_viewers {
+        if query.min_viewers.is_some() {
             where_clauses.push("viewer_count >= ?");
+        }
+        
+        if query.max_viewers.is_some() {
+            where_clauses.push("viewer_count <= ?");
         }
         
         if !where_clauses.is_empty() {
@@ -291,6 +310,16 @@ impl StreamStore for SqliteStore {
         if let Some(is_live) = query.is_live {
             count_query = count_query.bind(is_live);
         }
+        if let Some(ref group) = query.group {
+            count_query = count_query.bind(group);
+        }
+        for (key, value) in &query.labels {
+            count_query = count_query.bind(format!("%\"{}\":\"{}\"%", key, value));
+        }
+        if let Some(ref pattern) = search_pattern {
+            count_query = count_query.bind(pattern);
+            count_query = count_query.bind(pattern);
+        }
         if let Some(ref language) = query.language {
             count_query = count_query.bind(language);
         }
@@ -303,6 +332,9 @@ impl StreamStore for SqliteStore {
         if let Some(min_viewers) = query.min_viewers {
             count_query = count_query.bind(min_viewers as i64);
         }
+        if let Some(max_viewers) = query.max_viewers {
+            count_query = count_query.bind(max_viewers as i64);
+        }
         
         let total: i64 = count_query
             .fetch_one(&*self.pool)
@@ -310,8 +342,42 @@ impl StreamStore for SqliteStore {
             .map_err(|e| StoreError::QueryError(e.to_string()))?
             .get("count");
             
-        // Add ordering and pagination
-        sql.push_str(" ORDER BY viewer_count DESC, display_name ASC");
+        // Add ordering based on sort parameter
+        let sort_field = query.sort.as_deref().unwrap_or("viewers");
+        let is_ascending = query.order.as_deref().unwrap_or("desc") == "asc";
+        
+        let order_clause = match sort_field {
+            "name" => {
+                if is_ascending {
+                    " ORDER BY display_name ASC"
+                } else {
+                    " ORDER BY display_name DESC"
+                }
+            },
+            "platform" => {
+                if is_ascending {
+                    " ORDER BY platform ASC"
+                } else {
+                    " ORDER BY platform DESC"
+                }
+            },
+            "updated" => {
+                if is_ascending {
+                    " ORDER BY last_updated ASC"
+                } else {
+                    " ORDER BY last_updated DESC"
+                }
+            },
+            "viewers" | _ => {
+                if is_ascending {
+                    " ORDER BY viewer_count ASC, display_name ASC"
+                } else {
+                    " ORDER BY viewer_count DESC, display_name ASC"
+                }
+            },
+        };
+        
+        sql.push_str(order_clause);
         
         let page = query.page.unwrap_or(0);
         let page_size = query.page_size.unwrap_or(50).min(100);
@@ -329,6 +395,16 @@ impl StreamStore for SqliteStore {
         if let Some(is_live) = query.is_live {
             query_builder = query_builder.bind(is_live);
         }
+        if let Some(ref group) = query.group {
+            query_builder = query_builder.bind(group);
+        }
+        for (key, value) in &query.labels {
+            query_builder = query_builder.bind(format!("%\"{}\":\"{}\"%", key, value));
+        }
+        if let Some(ref pattern) = search_pattern {
+            query_builder = query_builder.bind(pattern);
+            query_builder = query_builder.bind(pattern);
+        }
         if let Some(ref language) = query.language {
             query_builder = query_builder.bind(language);
         }
@@ -340,6 +416,9 @@ impl StreamStore for SqliteStore {
         }
         if let Some(min_viewers) = query.min_viewers {
             query_builder = query_builder.bind(min_viewers as i64);
+        }
+        if let Some(max_viewers) = query.max_viewers {
+            query_builder = query_builder.bind(max_viewers as i64);
         }
         
         // Add pagination bindings

@@ -1,13 +1,16 @@
 //! HTTP request handlers
 
 use axum::{
-    extract::{Path, Query, State},
+    async_trait,
+    extract::{FromRequestParts, Path, State},
+    http::{request::Parts, StatusCode},
     Json,
 };
+use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::sync::Arc;
-use tracing::{debug, error};
+use tracing::debug;
 
 use stream_aggregator_core::{errors::*, models::*, traits::{StreamStore, PlatformProvider}};
 
@@ -15,6 +18,33 @@ use crate::responses::*;
 
 // Type alias for API handlers result
 type ApiResult<T> = Result<T, ApiErrorResponse>;
+
+/// Generic query string extractor that supports bracket notation
+/// 
+/// This extractor uses `serde_qs` to properly parse query strings with
+/// bracket notation like `?labels[key]=value` into nested structures.
+pub struct QsQuery<T>(pub T);
+
+#[async_trait]
+impl<T, S> FromRequestParts<S> for QsQuery<T>
+where
+    T: DeserializeOwned,
+    S: Send + Sync,
+{
+    type Rejection = (StatusCode, String);
+
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        let query = parts.uri.query().unwrap_or_default();
+        let value = serde_qs::from_str(query)
+            .map_err(|e| {
+                (
+                    StatusCode::BAD_REQUEST,
+                    format!("Failed to parse query string: {}", e),
+                )
+            })?;
+        Ok(QsQuery(value))
+    }
+}
 
 /// Shared application state
 #[derive(Clone)]
@@ -30,10 +60,17 @@ pub struct StreamsQuery {
     pub platform: Option<String>,
     #[serde(rename = "live")]
     pub is_live: Option<bool>,
+    pub group: Option<String>,
+    #[serde(default)]
+    pub labels: HashMap<String, String>,
+    pub search: Option<String>,
     pub language: Option<String>,
     pub category: Option<String>,
     pub tag: Option<String>,
     pub min_viewers: Option<u64>,
+    pub max_viewers: Option<u64>,
+    pub sort: Option<String>,
+    pub order: Option<String>,
     pub page: Option<usize>,
     #[serde(rename = "per_page")]
     pub page_size: Option<usize>,
@@ -42,17 +79,23 @@ pub struct StreamsQuery {
 /// GET /streams - List all streams
 pub async fn list_streams(
     State(state): State<AppState>,
-    Query(query): Query<StreamsQuery>,
+    QsQuery(query): QsQuery<StreamsQuery>,
 ) -> ApiResult<Json<PaginatedResponse<StreamInfo>>> {
     debug!(?query, "Listing streams");
 
     let stream_query = StreamQuery {
         platform: query.platform,
         is_live: query.is_live,
+        group: query.group,
+        labels: query.labels,
+        search: query.search,
         language: query.language,
         category: query.category,
         tag: query.tag,
         min_viewers: query.min_viewers,
+        max_viewers: query.max_viewers,
+        sort: query.sort,
+        order: query.order,
         page: query.page,
         page_size: query.page_size,
     };
@@ -84,12 +127,14 @@ pub struct StreamersQuery {
     pub platform: Option<String>,
     pub group: Option<String>,
     pub source: Option<StreamerSource>,
+    #[serde(default)]
+    pub labels: HashMap<String, String>,
 }
 
 /// GET /streamers - List tracked streamers
 pub async fn list_streamers(
     State(state): State<AppState>,
-    Query(query): Query<StreamersQuery>,
+    QsQuery(query): QsQuery<StreamersQuery>,
 ) -> ApiResult<Json<ApiResponse<Vec<TrackedStreamer>>>> {
     debug!(?query, "Listing tracked streamers");
 
@@ -97,7 +142,7 @@ pub async fn list_streamers(
         platform: query.platform,
         group: query.group,
         source: query.source,
-        labels: HashMap::new(),
+        labels: query.labels,
     };
 
     let streamers = state.store.get_tracked_streamers(&streamer_query).await?;
