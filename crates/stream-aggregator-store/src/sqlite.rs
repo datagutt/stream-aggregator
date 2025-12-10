@@ -249,54 +249,54 @@ impl StreamStore for SqliteStore {
         // Pre-compute search pattern to avoid lifetime issues
         let search_pattern = query.search.as_ref().map(|s| format!("%{}%", s));
         
+        // Pre-compute label filter clauses
+        let label_clauses: Vec<String> = query.labels.keys()
+            .map(|key| format!("json_extract(metadata, '$.labels.{}') = ?", key))
+            .collect();
+        
         // Build base query
         let mut sql = "SELECT * FROM streams WHERE 1=1".to_string();
-        let mut where_clauses = Vec::new();
         
         // Add filters
         if query.platform.is_some() {
-            where_clauses.push("platform = ?");
+            sql.push_str(" AND platform = ?");
         }
         
         if query.is_live.is_some() {
-            where_clauses.push("is_live = ?");
+            sql.push_str(" AND is_live = ?");
         }
         
         if query.group.is_some() {
-            where_clauses.push("json_extract(metadata, '$.group') = ?");
+            sql.push_str(" AND json_extract(metadata, '$.group') = ?");
         }
         
-        for _ in &query.labels {
-            where_clauses.push("json_extract(metadata, '$.labels') LIKE ?");
+        for label_clause in &label_clauses {
+            sql.push_str(" AND ");
+            sql.push_str(label_clause);
         }
         
         if search_pattern.is_some() {
-            where_clauses.push("(display_name LIKE ? OR title LIKE ?)");
+            sql.push_str(" AND (display_name LIKE ? OR title LIKE ?)");
         }
         
         if query.language.is_some() {
-            where_clauses.push("language = ?");
+            sql.push_str(" AND language = ?");
         }
         
         if query.category.is_some() {
-            where_clauses.push("category = ?");
+            sql.push_str(" AND category = ?");
         }
         
         if query.tag.is_some() {
-            where_clauses.push("tags LIKE ?");
+            sql.push_str(" AND tags LIKE ?");
         }
         
         if query.min_viewers.is_some() {
-            where_clauses.push("viewer_count >= ?");
+            sql.push_str(" AND viewer_count >= ?");
         }
         
         if query.max_viewers.is_some() {
-            where_clauses.push("viewer_count <= ?");
-        }
-        
-        if !where_clauses.is_empty() {
-            sql.push_str(" AND ");
-            sql.push_str(&where_clauses.join(" AND "));
+            sql.push_str(" AND viewer_count <= ?");
         }
         
         // Get total count
@@ -313,8 +313,8 @@ impl StreamStore for SqliteStore {
         if let Some(ref group) = query.group {
             count_query = count_query.bind(group);
         }
-        for (key, value) in &query.labels {
-            count_query = count_query.bind(format!("%\"{}\":\"{}\"%", key, value));
+        for (_key, value) in &query.labels {
+            count_query = count_query.bind(value);
         }
         if let Some(ref pattern) = search_pattern {
             count_query = count_query.bind(pattern);
@@ -398,8 +398,8 @@ impl StreamStore for SqliteStore {
         if let Some(ref group) = query.group {
             query_builder = query_builder.bind(group);
         }
-        for (key, value) in &query.labels {
-            query_builder = query_builder.bind(format!("%\"{}\":\"{}\"%", key, value));
+        for (_key, value) in &query.labels {
+            query_builder = query_builder.bind(value);
         }
         if let Some(ref pattern) = search_pattern {
             query_builder = query_builder.bind(pattern);
