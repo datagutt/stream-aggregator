@@ -3,15 +3,13 @@
 use async_trait::async_trait;
 use chrono::Utc;
 use regex::Regex;
+use serde_json::Value;
 use std::sync::OnceLock;
 use tracing::debug;
-use wreq::Client;
 
-use stream_aggregator_core::{
-    errors::ProviderError,
-    models::*,
-    traits::PlatformProvider,
-};
+use stream_aggregator_core::{errors::ProviderError, models::*, traits::PlatformProvider};
+use wreq::{redirect::Policy, Client};
+use wreq_util::Emulation;
 
 use crate::models::YouTubeConfig;
 
@@ -31,7 +29,8 @@ impl YouTubeProvider {
     /// Create a new YouTube provider
     pub fn new(_config: YouTubeConfig) -> Self {
         let client = Client::builder()
-            .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+            .emulation(Emulation::Chrome131)
+            .redirect(Policy::default())
             .build()
             .unwrap_or_else(|_| Client::new());
 
@@ -40,31 +39,33 @@ impl YouTubeProvider {
 
     fn avatar_regex() -> &'static Regex {
         AVATAR_REGEX.get_or_init(|| {
-            Regex::new(r#"channelMetadataRenderer.*?avatar.*?thumbnails.*?url".*?"(.*?)""#).unwrap()
+            Regex::new(r#"(?s)channelMetadataRenderer.*?avatar.*?thumbnails.*?url".*?"(.*?)""#)
+                .unwrap()
         })
     }
 
     fn name_regex() -> &'static Regex {
         NAME_REGEX.get_or_init(|| {
-            Regex::new(r#"metadata.*?channelMetadataRenderer.*?title".*?"(.*?)""#).unwrap()
+            Regex::new(r#"(?s)channelMetadataRenderer.*?title".*?"(.*?)""#).unwrap()
         })
     }
 
     fn title_regex() -> &'static Regex {
         TITLE_REGEX.get_or_init(|| {
-            Regex::new(r#"videoPrimaryInfoRenderer".*?"title".*?"runs".*?"text".*?"(.*?)""#).unwrap()
+            Regex::new(r#"(?s)videoPrimaryInfoRenderer".*?"title".*?"runs".*?"text".*?"(.*?)""#)
+                .unwrap()
         })
     }
 
     fn status_regex() -> &'static Regex {
-        STATUS_REGEX.get_or_init(|| {
-            Regex::new(r#"playabilityStatus.*?status".*?"(.*?)""#).unwrap()
-        })
+        STATUS_REGEX
+            .get_or_init(|| Regex::new(r#"(?s)playabilityStatus.*?status".*?"(.*?)""#).unwrap())
     }
 
     fn viewers_regex() -> &'static Regex {
         VIEWERS_REGEX.get_or_init(|| {
-            Regex::new(r#"videoPrimaryInfoRenderer".*?"viewCount".*?"runs".*?"text".*?"(.*?)""#).unwrap()
+            Regex::new(r#"(?s)videoPrimaryInfoRenderer".*?"viewCount".*?"runs".*?"text".*?"(.*?)""#)
+                .unwrap()
         })
     }
 }
@@ -91,12 +92,15 @@ impl PlatformProvider for YouTubeProvider {
         debug!("Fetching YouTube channel: {}", user_id);
 
         // Fetch channel page for metadata
-        let channel_url = format!("https://youtube.com/channel/{}", user_id);
-        let data = self.client
+        let channel_url = format!("https://www.youtube.com/channel/{}/featured", user_id);
+        let data = self
+            .client
             .get(&channel_url)
             .send()
             .await
-            .map_err(|e| ProviderError::HttpError(format!("Failed to fetch YouTube channel: {}", e)))?
+            .map_err(|e| {
+                ProviderError::HttpError(format!("Failed to fetch YouTube channel: {}", e))
+            })?
             .text()
             .await
             .map_err(|e| ProviderError::HttpError(format!("Failed to read response: {}", e)))?;
@@ -114,12 +118,15 @@ impl PlatformProvider for YouTubeProvider {
             .ok_or_else(|| ProviderError::ParseError("Could not find channel name".to_string()))?;
 
         // Fetch live page
-        let live_url = format!("https://youtube.com/channel/{}/live", user_id);
-        let livedata = self.client
+        let live_url = format!("https://www.youtube.com/channel/{}/live", user_id);
+        let livedata = self
+            .client
             .get(&live_url)
             .send()
             .await
-            .map_err(|e| ProviderError::HttpError(format!("Failed to fetch YouTube live page: {}", e)))?
+            .map_err(|e| {
+                ProviderError::HttpError(format!("Failed to fetch YouTube live page: {}", e))
+            })?
             .text()
             .await
             .map_err(|e| ProviderError::HttpError(format!("Failed to read response: {}", e)))?;
@@ -129,8 +136,14 @@ impl PlatformProvider for YouTubeProvider {
         let mut title = None;
         let mut viewers = None;
 
-        if let Some(title_match) = Self::title_regex().captures(&livedata).and_then(|c| c.get(1)) {
-            if let Some(status_match) = Self::status_regex().captures(&livedata).and_then(|c| c.get(1)) {
+        if let Some(title_match) = Self::title_regex()
+            .captures(&livedata)
+            .and_then(|c| c.get(1))
+        {
+            if let Some(status_match) = Self::status_regex()
+                .captures(&livedata)
+                .and_then(|c| c.get(1))
+            {
                 live = status_match.as_str() != "LIVE_STREAM_OFFLINE";
             }
             title = Some(title_match.as_str().to_string());
@@ -138,7 +151,10 @@ impl PlatformProvider for YouTubeProvider {
 
         // Extract viewer count if live
         if live {
-            if let Some(viewers_match) = Self::viewers_regex().captures(&livedata).and_then(|c| c.get(1)) {
+            if let Some(viewers_match) = Self::viewers_regex()
+                .captures(&livedata)
+                .and_then(|c| c.get(1))
+            {
                 let viewers_str = viewers_match.as_str();
                 // Extract first part before space and remove commas/periods
                 if let Some(first_part) = viewers_str.split(' ').next() {
@@ -159,14 +175,17 @@ impl PlatformProvider for YouTubeProvider {
         Ok(stream_info)
     }
 
-    async fn fetch_streams_batch(&self, user_ids: &[String]) -> Vec<Result<StreamInfo, ProviderError>> {
+    async fn fetch_streams_batch(
+        &self,
+        user_ids: &[String],
+    ) -> Vec<Result<StreamInfo, ProviderError>> {
         let mut results = Vec::with_capacity(user_ids.len());
-        
+
         for user_id in user_ids {
             results.push(self.fetch_stream(user_id).await);
             tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
         }
-        
+
         results
     }
 

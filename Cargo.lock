@@ -2519,11 +2519,13 @@ dependencies = [
  "async-trait",
  "chrono",
  "regex",
+ "serde_json",
  "stream-aggregator-core",
  "thiserror 2.0.17",
  "tokio",
  "tracing",
  "wreq",
+ "wreq-util",
 ]
 
 [[package]]
