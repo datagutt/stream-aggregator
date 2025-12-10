@@ -52,8 +52,8 @@ struct Cli {
     twitch_client_secret: Option<String>,
 
     /// Storage backend type (memory, sqlite)
-    #[arg(long, default_value = "memory", env = "STORE_BACKEND")]
-    store_backend: String,
+    #[arg(long, env = "STORE_BACKEND")]
+    store_backend: Option<String>,
 
     /// Database URL (for sqlite/postgres)
     #[arg(long, env = "DATABASE_URL")]
@@ -97,7 +97,9 @@ async fn main() -> Result<()> {
         if cli.twitch_client_secret.is_some() {
             config.providers.twitch.client_secret = cli.twitch_client_secret;
         }
-        config.store.backend = cli.store_backend;
+        if let Some(backend) = cli.store_backend {
+            config.store.backend = backend;
+        }
         if cli.database_url.is_some() {
             config.store.database_url = cli.database_url;
         }
@@ -112,7 +114,7 @@ async fn main() -> Result<()> {
             cli.scrape_interval_secs,
             cli.twitch_client_id,
             cli.twitch_client_secret,
-            cli.store_backend,
+            cli.store_backend.unwrap_or("memory".to_string()),
             cli.database_url,
         )
     };
