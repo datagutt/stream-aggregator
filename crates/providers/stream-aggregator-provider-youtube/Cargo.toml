@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 stream-aggregator-core = { path = "../../stream-aggregator-core" }
 async-trait = "0.1"
-wreq = "0.2"
+wreq = { workspace = true }
 thiserror = "2.0"
 tracing = "0.1"
 regex = "1.11"

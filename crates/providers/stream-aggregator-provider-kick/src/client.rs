@@ -32,10 +32,8 @@ impl KickProvider {
     /// Create a new Kick provider with browser emulation
     pub fn new(config: KickConfig) -> Result<Self, ProviderError> {
         // Create wreq client with Chrome 131 emulation to bypass Cloudflare
-        let client = Client::builder()
+let client = Client::builder()
             .emulation(Emulation::Chrome131)
-            .cookie_store(true)
-            .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36")
             .build()
             .map_err(|e| ProviderError::InitializationError(format!("Failed to create Kick client: {}", e)))?;
 

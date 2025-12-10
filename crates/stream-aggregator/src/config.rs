@@ -109,13 +109,29 @@ impl Default for StoreConfig {
 /// Provider configurations
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ProvidersConfig {
-    #[serde(default)]
-    pub twitch: TwitchProviderConfig,
-    
-    // Future providers will be added here:
-    // pub youtube: YoutubeProviderConfig,
-    // pub kick: KickProviderConfig,
-    // etc.
+	#[serde(default)]
+	pub twitch: TwitchProviderConfig,
+	
+	#[serde(default)]
+	pub youtube: YouTubeProviderConfig,
+	
+	#[serde(default)]
+	pub kick: KickProviderConfig,
+	
+	#[serde(default)]
+	pub dlive: DLiveProviderConfig,
+	
+	#[serde(default)]
+	pub trovo: TrovoProviderConfig,
+	
+	#[serde(default)]
+	pub guac: GuacProviderConfig,
+	
+	#[serde(default)]
+	pub angelthump: AngelThumpProviderConfig,
+	
+	#[serde(default)]
+	pub robotstreamer: RobotStreamerProviderConfig,
 }
 
 /// Twitch provider configuration
@@ -134,6 +150,59 @@ impl Default for TwitchProviderConfig {
             client_secret: None,
         }
     }
+}
+
+/// YouTube provider configuration
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct YouTubeProviderConfig {
+	#[serde(default = "default_true")]
+	pub enabled: bool,
+}
+
+/// Kick provider configuration
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct KickProviderConfig {
+	#[serde(default = "default_true")]
+	pub enabled: bool,
+}
+
+/// DLive provider configuration
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct DLiveProviderConfig {
+	#[serde(default = "default_true")]
+	pub enabled: bool,
+}
+
+/// Trovo provider configuration
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct TrovoProviderConfig {
+	#[serde(default = "default_true")]
+	pub enabled: bool,
+}
+
+/// Guac provider configuration
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct GuacProviderConfig {
+	#[serde(default = "default_true")]
+	pub enabled: bool,
+}
+
+/// AngelThump provider configuration
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct AngelThumpProviderConfig {
+	#[serde(default = "default_true")]
+	pub enabled: bool,
+}
+
+/// RobotStreamer provider configuration
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct RobotStreamerProviderConfig {
+	#[serde(default = "default_true")]
+	pub enabled: bool,
+}
+
+fn default_true() -> bool {
+	true
 }
 
 impl AppConfig {
@@ -165,10 +234,17 @@ impl AppConfig {
             },
             providers: ProvidersConfig {
                 twitch: TwitchProviderConfig {
-                    enabled: true, // Will be checked in register_twitch
+                    enabled: true,
                     client_id: twitch_client_id,
                     client_secret: twitch_client_secret,
                 },
+                youtube: YouTubeProviderConfig::default(),
+                kick: KickProviderConfig::default(),
+                dlive: DLiveProviderConfig::default(),
+                trovo: TrovoProviderConfig::default(),
+                guac: GuacProviderConfig::default(),
+                angelthump: AngelThumpProviderConfig::default(),
+                robotstreamer: RobotStreamerProviderConfig::default(),
             },
             store: StoreConfig {
                 backend: store_backend,

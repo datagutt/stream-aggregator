@@ -74,8 +74,8 @@ tokio = { version = "1.35", features = ["full"] }
 # API-compatible with reqwest, so we use it as the default for ALL platforms
 # This gives us anti-bot bypass capabilities (required for Kick) everywhere
 # https://github.com/0x676e67/wreq
-wreq = "6.0"
-wreq-util = "3.0"  # Browser emulation presets (Chrome, Safari, Firefox, etc.)
+wreq = { workspace = true }
+wreq-util = { workspace = true } # Browser emulation presets (Chrome, Safari, Firefox, etc.)
 
 # Optional: standard reqwest for simpler builds without TLS fingerprinting
 # Can be used via feature flag for platforms that don't need anti-bot bypass
@@ -165,6 +165,7 @@ hex = { workspace = true }
 ```
 
 **Contents:**
+
 - `StreamInfo` - Stream data model
 - `TrackedStreamer` - Tracked streamer model
 - `DiscoveryRule` - Discovery rule model
@@ -222,6 +223,7 @@ moka = { workspace = true }
 ```
 
 **Contents:**
+
 - `MemoryStore` - In-memory implementation
 - `SqliteStore` - SQLite implementation
 - `PostgresStore` - PostgreSQL implementation
@@ -258,6 +260,7 @@ utoipa-swagger-ui = { version = "6.0", features = ["axum"] }
 ```
 
 **Contents:**
+
 - Router setup
 - Request handlers
 - Middleware (auth, rate limiting, CORS)
@@ -290,6 +293,7 @@ metrics = { workspace = true }
 ```
 
 **Contents:**
+
 - `Scheduler` - Main scheduling loop
 - `RateLimiter` - Per-provider rate limiting
 - `CircuitBreaker` - Failure protection
@@ -337,7 +341,7 @@ tokio-test = { workspace = true }
 | AngelThump | (none) | |
 | RobotStreamer | (none) | HTTP only (not HTTPS) |
 
-> **Note:** All providers use `wreq` as the default HTTP client. This provides TLS fingerprinting 
+> **Note:** All providers use `wreq` as the default HTTP client. This provides TLS fingerprinting
 > capabilities across the board, which is required for Kick and beneficial for other platforms
 > that may add anti-bot protection in the future. `wreq` is API-compatible with `reqwest`.
 
@@ -528,6 +532,7 @@ prost-build = "0.12"
 ```
 
 **Features:**
+
 - Connect to TikTok LIVE via WebSocket
 - Decode protobuf messages (chat, gifts, likes, member joins, etc.)
 - Room info fetching
@@ -592,9 +597,10 @@ We use **wreq** as the default HTTP client for **all platforms**:
 - JA3/JA4/HTTP2 TLS fingerprint emulation
 - Uses BoringSSL for precise TLS control
 - Browser emulation presets via `wreq-util`
-- See: https://github.com/0x676e67/wreq
+- See: <https://github.com/0x676e67/wreq>
 
 **Why wreq for everything?**
+
 1. **Future-proofing**: Any platform could add Cloudflare/anti-bot protection
 2. **Consistency**: One HTTP client across all providers
 3. **No downside**: Same API as reqwest, just more capabilities

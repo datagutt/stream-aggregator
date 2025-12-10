@@ -506,9 +506,12 @@ version = "0.4.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "34a3cbbb8b6eca96f3a5c4bf6938d5b27ced3675d69f95bb51948722870bc323"
 dependencies = [
+ "brotli",
  "compression-core",
  "flate2",
  "memchr",
+ "zstd",
+ "zstd-safe",
 ]
 
 [[package]]
@@ -2003,7 +2006,7 @@ checksum = "cd34f36fe4c5ba9654417139a9b3a20d2e1de6012ee678ad14d240c22c78d8d6"
 dependencies = [
  "percent-encoding",
  "serde",
- "thiserror",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -2186,7 +2189,7 @@ dependencies = [
  "sha2",
  "smallvec",
  "sqlformat",
- "thiserror",
+ "thiserror 1.0.69",
  "tokio",
  "tokio-stream",
  "tracing",
@@ -2271,7 +2274,7 @@ dependencies = [
  "smallvec",
  "sqlx-core",
  "stringprep",
- "thiserror",
+ "thiserror 1.0.69",
  "tracing",
  "uuid",
  "whoami",
@@ -2311,7 +2314,7 @@ dependencies = [
  "smallvec",
  "sqlx-core",
  "stringprep",
- "thiserror",
+ "thiserror 1.0.69",
  "tracing",
  "uuid",
  "whoami",
@@ -2358,7 +2361,14 @@ dependencies = [
  "serde",
  "stream-aggregator-api",
  "stream-aggregator-core",
+ "stream-aggregator-provider-angelthump",
+ "stream-aggregator-provider-dlive",
+ "stream-aggregator-provider-guac",
+ "stream-aggregator-provider-kick",
+ "stream-aggregator-provider-robotstreamer",
+ "stream-aggregator-provider-trovo",
  "stream-aggregator-provider-twitch",
+ "stream-aggregator-provider-youtube",
  "stream-aggregator-scheduler",
  "stream-aggregator-store",
  "tokio",
@@ -2378,10 +2388,10 @@ dependencies = [
  "serde_qs",
  "stream-aggregator-core",
  "stream-aggregator-store",
- "thiserror",
+ "thiserror 1.0.69",
  "tokio",
  "tower 0.4.13",
- "tower-http",
+ "tower-http 0.5.2",
  "tracing",
 ]
 
@@ -2395,8 +2405,94 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
- "thiserror",
+ "thiserror 1.0.69",
  "uuid",
+]
+
+[[package]]
+name = "stream-aggregator-provider-angelthump"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "serde",
+ "serde_json",
+ "stream-aggregator-core",
+ "thiserror 2.0.17",
+ "tracing",
+ "wreq",
+]
+
+[[package]]
+name = "stream-aggregator-provider-dlive"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "serde",
+ "serde_json",
+ "stream-aggregator-core",
+ "thiserror 2.0.17",
+ "tracing",
+ "wreq",
+]
+
+[[package]]
+name = "stream-aggregator-provider-guac"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "serde",
+ "serde_json",
+ "stream-aggregator-core",
+ "thiserror 2.0.17",
+ "tracing",
+ "wreq",
+]
+
+[[package]]
+name = "stream-aggregator-provider-kick"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "serde",
+ "serde_json",
+ "stream-aggregator-core",
+ "thiserror 2.0.17",
+ "tokio",
+ "tracing",
+ "wreq",
+ "wreq-util",
+]
+
+[[package]]
+name = "stream-aggregator-provider-robotstreamer"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "serde",
+ "serde_json",
+ "stream-aggregator-core",
+ "thiserror 2.0.17",
+ "tracing",
+ "wreq",
+]
+
+[[package]]
+name = "stream-aggregator-provider-trovo"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "serde",
+ "serde_json",
+ "stream-aggregator-core",
+ "thiserror 2.0.17",
+ "tracing",
+ "wreq",
 ]
 
 [[package]]
@@ -2408,11 +2504,25 @@ dependencies = [
  "serde",
  "serde_json",
  "stream-aggregator-core",
- "thiserror",
+ "thiserror 1.0.69",
  "tokio",
  "tokio-test",
  "tracing",
  "wiremock",
+ "wreq",
+]
+
+[[package]]
+name = "stream-aggregator-provider-youtube"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "regex",
+ "stream-aggregator-core",
+ "thiserror 2.0.17",
+ "tokio",
+ "tracing",
  "wreq",
 ]
 
@@ -2425,7 +2535,7 @@ dependencies = [
  "serde_json",
  "stream-aggregator-core",
  "stream-aggregator-store",
- "thiserror",
+ "thiserror 1.0.69",
  "tokio",
  "tracing",
 ]
@@ -2443,7 +2553,7 @@ dependencies = [
  "sqlx",
  "stream-aggregator-core",
  "tempfile",
- "thiserror",
+ "thiserror 1.0.69",
  "tokio",
  "tracing",
 ]
@@ -2535,7 +2645,16 @@ version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6aaf5339b578ea85b50e080feb250a3e8ae8cfcdff9a461c9ec2904bc923f52"
 dependencies = [
- "thiserror-impl",
+ "thiserror-impl 1.0.69",
+]
+
+[[package]]
+name = "thiserror"
+version = "2.0.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f63587ca0f12b72a0600bcba1d40081f830876000bb46dd2337a3051618f4fc8"
+dependencies = [
+ "thiserror-impl 2.0.17",
 ]
 
 [[package]]
@@ -2543,6 +2662,17 @@ name = "thiserror-impl"
 version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4fee6c4efc90059e10f81e6d42c60a18f76588c3d74cb83a0b242a2b6c7504c1"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.111",
+]
+
+[[package]]
+name = "thiserror-impl"
+version = "2.0.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3ff15c8ecd7de3849db632e14d18d2571fa09dfc5ed93479bc4485c7a517c913"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2761,6 +2891,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "tower-http"
+version = "0.6.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d4e6559d53cc268e5031cd8429d05415bc4cb4aefc4aa5d6cc35fbf5b924a1f8"
+dependencies = [
+ "async-compression",
+ "bitflags",
+ "bytes",
+ "futures-core",
+ "http",
+ "http-body",
+ "http-body-util",
+ "pin-project-lite",
+ "tokio",
+ "tokio-util",
+ "tower-layer",
+ "tower-service",
+]
+
+[[package]]
 name = "tower-layer"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2867,8 +3017,28 @@ dependencies = [
  "log",
  "rand",
  "sha1",
- "thiserror",
+ "thiserror 1.0.69",
  "utf-8",
+]
+
+[[package]]
+name = "typed-builder"
+version = "0.23.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "31aa81521b70f94402501d848ccc0ecaa8f93c8eb6999eb9747e72287757ffda"
+dependencies = [
+ "typed-builder-macro",
+]
+
+[[package]]
+name = "typed-builder-macro"
+version = "0.23.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "076a02dc54dd46795c2e9c8282ed40bcfb1e22747e955de9389a1de28190fb26"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.111",
 ]
 
 [[package]]
@@ -3376,9 +3546,20 @@ dependencies = [
  "tokio",
  "tokio-boring2",
  "tower 0.5.2",
+ "tower-http 0.6.8",
  "want",
  "webpki-root-certs",
  "zstd",
+]
+
+[[package]]
+name = "wreq-util"
+version = "3.0.0-rc.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dde79fd3081d2df630d84f327506bafc0a11c2499dc9238f0302a2f3bc39ac06"
+dependencies = [
+ "typed-builder",
+ "wreq",
 ]
 
 [[package]]
