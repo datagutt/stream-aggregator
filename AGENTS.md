@@ -7,7 +7,6 @@
 - `cargo test <test_name>` - Run specific test (e.g., `cargo test library_test`)
 - `cargo clippy` - Lint code
 - `cargo fmt` - Format code
-- `cargo run --bin sd-cli -- <command>` - Run CLI (note: binary is `sd-cli`, not `spacedrive`)
 
 ## Code Style
 
