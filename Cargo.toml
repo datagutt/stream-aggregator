@@ -6,6 +6,7 @@ members = [
     "crates/stream-aggregator-api",
     "crates/stream-aggregator-store",
     "crates/stream-aggregator-scheduler",
+    "crates/stream-aggregator-migrator",
     "crates/providers/stream-aggregator-provider-twitch",
 ]
 
