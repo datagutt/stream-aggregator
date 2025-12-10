@@ -1,8 +1,9 @@
 //! Twitch provider client implementation
 
 use async_trait::async_trait;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, Duration, Utc};
 use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 use tracing::{debug, error, warn};
 use wreq::Client;
 
@@ -13,15 +14,38 @@ use stream_aggregator_core::{
 };
 
 use crate::auth::TokenManager;
-use crate::models::{TwitchConfig, StreamsResponse, UsersResponse};
+use crate::models::{TwitchConfig, StreamsResponse, UsersResponse, TwitchUser};
 
 const HELIX_API_BASE: &str = "https://api.twitch.tv/helix";
+const USER_CACHE_TTL_HOURS: i64 = 24;
+
+/// Cached user information
+#[derive(Debug, Clone)]
+struct CachedUserInfo {
+    user: TwitchUser,
+    cached_at: DateTime<Utc>,
+}
+
+impl CachedUserInfo {
+    fn new(user: TwitchUser) -> Self {
+        Self {
+            user,
+            cached_at: Utc::now(),
+        }
+    }
+
+    fn is_stale(&self) -> bool {
+        let age = Utc::now() - self.cached_at;
+        age > Duration::hours(USER_CACHE_TTL_HOURS)
+    }
+}
 
 /// Twitch platform provider
 pub struct TwitchProvider {
     client: Client,
     config: TwitchConfig,
     token_manager: TokenManager,
+    user_cache: Arc<RwLock<HashMap<String, CachedUserInfo>>>,
 }
 
 impl TwitchProvider {
@@ -34,6 +58,7 @@ impl TwitchProvider {
             client,
             config,
             token_manager,
+            user_cache: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -47,6 +72,39 @@ impl TwitchProvider {
         headers.insert("Authorization", format!("Bearer {}", token));
         headers.insert("Client-Id", self.config.client_id.clone());
         Ok(headers)
+    }
+
+    /// Get cached user info if available and not stale
+    fn get_cached_user(&self, user_id: &str) -> Option<TwitchUser> {
+        let cache = self.user_cache.read().ok()?;
+        let cached = cache.get(user_id)?;
+        if cached.is_stale() {
+            debug!("Cached user {} is stale", user_id);
+            None
+        } else {
+            debug!("Using cached user {}", user_id);
+            Some(cached.user.clone())
+        }
+    }
+
+    /// Update cache with user info
+    fn cache_user(&self, user: TwitchUser) {
+        if let Ok(mut cache) = self.user_cache.write() {
+            let user_id = user.id.clone();
+            cache.insert(user_id.clone(), CachedUserInfo::new(user));
+            debug!("Cached user {}", user_id);
+        }
+    }
+
+    /// Batch update cache with multiple users
+    fn cache_users(&self, users: Vec<TwitchUser>) {
+        if let Ok(mut cache) = self.user_cache.write() {
+            for user in users {
+                let user_id = user.id.clone();
+                cache.insert(user_id, CachedUserInfo::new(user));
+            }
+            debug!("Cached {} users", cache.len());
+        }
     }
 
     /// Resolve a username (login) to a user ID
@@ -93,40 +151,47 @@ impl TwitchProvider {
          debug!("Fetching stream info for user_id: {}", user_id);
          let headers = self.auth_headers().await?;
 
-         // First, get user info
-         let user_url = format!("{}/users?id={}", HELIX_API_BASE, user_id);
-         debug!("GET {}", user_url);
-         let mut user_request = self.client.get(&user_url);
-         for (key, value) in &headers {
-             user_request = user_request.header(*key, value);
-         }
+         // First, try to get user info from cache
+         let user = if let Some(cached_user) = self.get_cached_user(user_id) {
+             cached_user
+         } else {
+             // Cache miss - fetch from API
+             let user_url = format!("{}/users?id={}", HELIX_API_BASE, user_id);
+             debug!("GET {}", user_url);
+             let mut user_request = self.client.get(&user_url);
+             for (key, value) in &headers {
+                 user_request = user_request.header(*key, value);
+             }
 
-         let user_response = user_request.send().await.map_err(|e| {
-             error!("Network error: {}", e);
-             ProviderError::HttpError(format!("Failed to fetch Twitch user info: {}", e))
-         })?;
+             let user_response = user_request.send().await.map_err(|e| {
+                 error!("Network error: {}", e);
+                 ProviderError::HttpError(format!("Failed to fetch Twitch user info: {}", e))
+             })?;
 
-         let status = user_response.status();
-         debug!("Response status: {}", status);
+             let status = user_response.status();
+             debug!("Response status: {}", status);
 
-         if !status.is_success() {
-             let body = user_response.text().await.unwrap_or_default();
-             error!("Twitch API error {} (user: {}): {}", status, user_id, body);
-             return Err(ProviderError::HttpError(format!("Twitch API error {}: {}", status, body)));
-         }
+             if !status.is_success() {
+                 let body = user_response.text().await.unwrap_or_default();
+                 error!("Twitch API error {} (user: {}): {}", status, user_id, body);
+                 return Err(ProviderError::HttpError(format!("Twitch API error {}: {}", status, body)));
+             }
 
-         let users: UsersResponse = user_response.json().await.map_err(|e| {
-             error!("Failed to parse Twitch user response: {}", e);
-             ProviderError::ParseError(format!("Failed to parse Twitch user response: {}", e))
-         })?;
+             let users: UsersResponse = user_response.json().await.map_err(|e| {
+                 error!("Failed to parse Twitch user response: {}", e);
+                 ProviderError::ParseError(format!("Failed to parse Twitch user response: {}", e))
+             })?;
 
-         debug!("Found {} user(s)", users.data.len());
-         if users.data.is_empty() {
-             warn!("User not found in Twitch API: {}", user_id);
-             return Err(ProviderError::StreamerNotFound(user_id.to_string()));
-         }
+             debug!("Found {} user(s)", users.data.len());
+             if users.data.is_empty() {
+                 warn!("User not found in Twitch API: {}", user_id);
+                 return Err(ProviderError::StreamerNotFound(user_id.to_string()));
+             }
 
-        let user = &users.data[0];
+             let fetched_user = users.data.into_iter().next().unwrap();
+             self.cache_user(fetched_user.clone());
+             fetched_user
+         };
 
          // Then check if they're streaming
          let stream_url = format!("{}/streams?user_id={}", HELIX_API_BASE, user_id);
@@ -244,69 +309,87 @@ impl PlatformProvider for TwitchProvider {
                  }
              };
 
-             // Step 1: Batch fetch user information
-             let url = format!("{}/users", HELIX_API_BASE);
-             debug!("GET {} with {} user IDs: {:?}", url, chunk.len(), chunk);
-             let mut request = self.client.get(&url);
+             // Step 1: Check cache and identify users that need fetching
+             let mut user_map: HashMap<String, TwitchUser> = HashMap::new();
+             let mut users_to_fetch = Vec::new();
 
-             // Build all query params at once to avoid overwriting
-             let query_params: Vec<(&str, &str)> = chunk
-                 .iter()
-                 .map(|id| ("id", id.as_str()))
-                 .collect();
-             request = request.query(&query_params);
-
-             for (key, value) in &headers {
-                 request = request.header(*key, value);
+             for user_id in chunk {
+                 if let Some(cached_user) = self.get_cached_user(user_id) {
+                     user_map.insert(user_id.clone(), cached_user);
+                 } else {
+                     users_to_fetch.push(user_id.as_str());
+                 }
              }
 
-             let response = match request.send().await {
-                 Ok(r) => {
-                     debug!("Batch users request sent, response status: {}", r.status());
-                     r
-                 },
-                 Err(e) => {
-                     error!("Batch users request network error: {}", e);
-                     let err = ProviderError::HttpError(format!("Batch users request failed: {}", e));
+             debug!("Cache hit: {}/{}, need to fetch: {}", user_map.len(), chunk.len(), users_to_fetch.len());
+
+             // Step 2: Batch fetch user information only for cache misses
+             if !users_to_fetch.is_empty() {
+                 let url = format!("{}/users", HELIX_API_BASE);
+                 debug!("GET {} with {} user IDs", url, users_to_fetch.len());
+                 let mut request = self.client.get(&url);
+
+                 // Build all query params at once to avoid overwriting
+                 let query_params: Vec<(&str, &str)> = users_to_fetch
+                     .iter()
+                     .map(|id| ("id", *id))
+                     .collect();
+                 request = request.query(&query_params);
+
+                 for (key, value) in &headers {
+                     request = request.header(*key, value);
+                 }
+
+                 let response = match request.send().await {
+                     Ok(r) => {
+                         debug!("Batch users request sent, response status: {}", r.status());
+                         r
+                     },
+                     Err(e) => {
+                         error!("Batch users request network error: {}", e);
+                         let err = ProviderError::HttpError(format!("Batch users request failed: {}", e));
+                         for _user_id in chunk {
+                             results.push(Err(err.clone()));
+                         }
+                         continue;
+                     }
+                 };
+
+                 let status = response.status();
+                 if !status.is_success() {
+                     let body = response.text().await.unwrap_or_default();
+                     error!("Batch users request returned error {}: {}", status, body);
+                     let err = ProviderError::HttpError(format!("Batch users request error {}: {}", status, body));
                      for _user_id in chunk {
                          results.push(Err(err.clone()));
                      }
                      continue;
                  }
-             };
 
-             let status = response.status();
-             if !status.is_success() {
-                 let body = response.text().await.unwrap_or_default();
-                 error!("Batch users request returned error {}: {}", status, body);
-                 let err = ProviderError::HttpError(format!("Batch users request error {}: {}", status, body));
-                 for _user_id in chunk {
-                     results.push(Err(err.clone()));
-                 }
-                 continue;
-             }
-
-             let users: UsersResponse = match response.json::<UsersResponse>().await {
-                 Ok(u) => {
-                     debug!("Batch users response parsed, found {} user(s)", u.data.len());
-                     u
-                 },
-                 Err(e) => {
-                     error!("Failed to parse batch users response: {}", e);
-                     let err = ProviderError::ParseError(format!("Failed to parse batch users response: {}", e));
-                     for _user_id in chunk {
-                         results.push(Err(err.clone()));
+                 let users: UsersResponse = match response.json::<UsersResponse>().await {
+                     Ok(u) => {
+                         debug!("Batch users response parsed, found {} user(s)", u.data.len());
+                         u
+                     },
+                     Err(e) => {
+                         error!("Failed to parse batch users response: {}", e);
+                         let err = ProviderError::ParseError(format!("Failed to parse batch users response: {}", e));
+                         for _user_id in chunk {
+                             results.push(Err(err.clone()));
+                        }
+                        continue;
                     }
-                    continue;
-                }
-            };
+                };
 
-             // Create a map of user_id -> user for quick lookup
-             let user_map: HashMap<_, _> = users
-                 .data
-                 .into_iter()
-                 .map(|u| (u.id.clone(), u))
-                 .collect();
+                 // Add fetched users to map and cache them
+                 let fetched_users: Vec<TwitchUser> = users.data;
+                 for user in fetched_users {
+                     user_map.insert(user.id.clone(), user.clone());
+                 }
+                 
+                 // Batch update cache
+                 self.cache_users(user_map.values().cloned().collect());
+             }
 
              debug!("User map has {} entry/entries", user_map.len());
 
