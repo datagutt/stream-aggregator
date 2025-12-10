@@ -35,7 +35,7 @@ impl KickProvider {
 let client = Client::builder()
             .emulation(Emulation::Chrome131)
             .build()
-            .map_err(|e| ProviderError::InitializationError(format!("Failed to create Kick client: {}", e)))?;
+            .map_err(|e| ProviderError::InternalError(format!("Failed to create Kick client: {}", e)))?;
 
         Ok(Self {
             client,
@@ -61,12 +61,17 @@ let client = Client::builder()
             .await
             .map_err(|e| ProviderError::HttpError(format!("Failed to fetch Kick homepage: {}", e)))?;
 
-        // Extract XSRF token from cookies
+        // Extract XSRF token from response headers
         let mut token_value = None;
-        for cookie in response.cookies() {
-            if cookie.name() == "XSRF-TOKEN" {
-                token_value = Some(cookie.value().to_string());
-                break;
+        if let Some(set_cookie_header) = response.headers().get("set-cookie") {
+            if let Ok(cookie_str) = set_cookie_header.to_str() {
+                for cookie in cookie_str.split(';') {
+                    let cookie = cookie.trim();
+                    if cookie.starts_with("XSRF-TOKEN=") {
+                        token_value = Some(cookie.strip_prefix("XSRF-TOKEN=").unwrap_or("").to_string());
+                        break;
+                    }
+                }
             }
         }
 
@@ -112,7 +117,7 @@ let client = Client::builder()
         if status == 403 || status == 429 {
             // Rate limited or blocked by Cloudflare
             warn!("Kick API returned {}, possible rate limit or Cloudflare block", status);
-            return Err(ProviderError::RateLimited);
+            return Err(ProviderError::RateLimitExceeded);
         }
 
         if status == 404 {
