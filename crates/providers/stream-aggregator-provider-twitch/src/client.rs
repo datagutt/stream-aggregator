@@ -237,14 +237,14 @@ impl PlatformProvider for TwitchProvider {
                  Err(e) => {
                      error!("Auth failed for chunk {}: {}", chunk_idx, e);
                      // If auth fails, return error for all in this chunk
-                     for user_id in chunk {
+                     for _user_id in chunk {
                          results.push(Err(e.clone()));
                      }
                      continue;
                  }
              };
 
-             // Build query string with multiple user ID parameters
+             // Step 1: Batch fetch user information
              let url = format!("{}/users", HELIX_API_BASE);
              debug!("GET {} with {} user IDs: {:?}", url, chunk.len(), chunk);
              let mut request = self.client.get(&url);
@@ -262,13 +262,13 @@ impl PlatformProvider for TwitchProvider {
 
              let response = match request.send().await {
                  Ok(r) => {
-                     debug!("Batch request sent, response status: {}", r.status());
+                     debug!("Batch users request sent, response status: {}", r.status());
                      r
                  },
                  Err(e) => {
-                     error!("Batch request network error: {}", e);
-                     let err = ProviderError::HttpError(format!("Batch request failed: {}", e));
-                     for user_id in chunk {
+                     error!("Batch users request network error: {}", e);
+                     let err = ProviderError::HttpError(format!("Batch users request failed: {}", e));
+                     for _user_id in chunk {
                          results.push(Err(err.clone()));
                      }
                      continue;
@@ -278,9 +278,9 @@ impl PlatformProvider for TwitchProvider {
              let status = response.status();
              if !status.is_success() {
                  let body = response.text().await.unwrap_or_default();
-                 error!("Batch request returned error {}: {}", status, body);
-                 let err = ProviderError::HttpError(format!("Batch request error {}: {}", status, body));
-                 for user_id in chunk {
+                 error!("Batch users request returned error {}: {}", status, body);
+                 let err = ProviderError::HttpError(format!("Batch users request error {}: {}", status, body));
+                 for _user_id in chunk {
                      results.push(Err(err.clone()));
                  }
                  continue;
@@ -288,13 +288,13 @@ impl PlatformProvider for TwitchProvider {
 
              let users: UsersResponse = match response.json::<UsersResponse>().await {
                  Ok(u) => {
-                     debug!("Batch response parsed, found {} user(s)", u.data.len());
+                     debug!("Batch users response parsed, found {} user(s)", u.data.len());
                      u
                  },
                  Err(e) => {
-                     error!("Failed to parse batch response: {}", e);
-                     let err = ProviderError::ParseError(format!("Failed to parse batch response: {}", e));
-                     for user_id in chunk {
+                     error!("Failed to parse batch users response: {}", e);
+                     let err = ProviderError::ParseError(format!("Failed to parse batch users response: {}", e));
+                     for _user_id in chunk {
                          results.push(Err(err.clone()));
                     }
                     continue;
@@ -308,22 +308,131 @@ impl PlatformProvider for TwitchProvider {
                  .map(|u| (u.id.clone(), u))
                  .collect();
 
-             debug!("User map has {} entry/entries, chunk has {} request(s)", user_map.len(), chunk.len());
+             debug!("User map has {} entry/entries", user_map.len());
 
-             // Fetch stream status for all found users
-             for user_id in chunk {
-                 if let Some(user) = user_map.get(user_id) {
-                     debug!("Found {} in response (login: {}, display: {})", user_id, user.login, user.display_name);
-                     match self.fetch_stream_by_user_id(&user.id).await {
-                         Ok(info) => {
-                             debug!("Successfully fetched stream for {}", user_id);
-                             results.push(Ok(info));
-                         },
-                         Err(e) => {
-                             error!("Failed to fetch stream for {}: {}", user_id, e);
-                             results.push(Err(e));
+             // Step 2: Batch fetch stream information for all users in this chunk
+             let streams_url = format!("{}/streams", HELIX_API_BASE);
+             debug!("GET {} with {} user IDs", streams_url, chunk.len());
+             let mut streams_request = self.client.get(&streams_url);
+
+             // Build query params for streams
+             let streams_query_params: Vec<(&str, &str)> = chunk
+                 .iter()
+                 .map(|id| ("user_id", id.as_str()))
+                 .collect();
+             streams_request = streams_request.query(&streams_query_params);
+
+             for (key, value) in &headers {
+                 streams_request = streams_request.header(*key, value);
+             }
+
+             let streams_response = match streams_request.send().await {
+                 Ok(r) => {
+                     debug!("Batch streams request sent, response status: {}", r.status());
+                     r
+                 },
+                 Err(e) => {
+                     error!("Batch streams request network error: {}", e);
+                     // Return offline status for all users if stream fetch fails
+                     for user_id in chunk {
+                         if let Some(user) = user_map.get(user_id) {
+                             let mut stream_info = StreamInfo::new("twitch", &user.id, &user.display_name);
+                             stream_info.avatar_url = Some(user.profile_image_url.clone());
+                             stream_info.is_live = false;
+                             stream_info.last_updated = Utc::now();
+                             results.push(Ok(stream_info));
+                         } else {
+                             results.push(Err(ProviderError::StreamerNotFound(user_id.to_string())));
                          }
                      }
+                     continue;
+                 }
+             };
+
+             let streams_status = streams_response.status();
+             if !streams_status.is_success() {
+                 let body = streams_response.text().await.unwrap_or_default();
+                 error!("Batch streams request returned error {}: {}", streams_status, body);
+                 // Return offline status for all users if stream fetch fails
+                 for user_id in chunk {
+                     if let Some(user) = user_map.get(user_id) {
+                         let mut stream_info = StreamInfo::new("twitch", &user.id, &user.display_name);
+                         stream_info.avatar_url = Some(user.profile_image_url.clone());
+                         stream_info.is_live = false;
+                         stream_info.last_updated = Utc::now();
+                         results.push(Ok(stream_info));
+                     } else {
+                         results.push(Err(ProviderError::StreamerNotFound(user_id.to_string())));
+                     }
+                 }
+                 continue;
+             }
+
+             let streams: StreamsResponse = match streams_response.json::<StreamsResponse>().await {
+                 Ok(s) => {
+                     debug!("Batch streams response parsed, found {} stream(s)", s.data.len());
+                     s
+                 },
+                 Err(e) => {
+                     error!("Failed to parse batch streams response: {}", e);
+                     // Return offline status for all users if parse fails
+                     for user_id in chunk {
+                         if let Some(user) = user_map.get(user_id) {
+                             let mut stream_info = StreamInfo::new("twitch", &user.id, &user.display_name);
+                             stream_info.avatar_url = Some(user.profile_image_url.clone());
+                             stream_info.is_live = false;
+                             stream_info.last_updated = Utc::now();
+                             results.push(Ok(stream_info));
+                         } else {
+                             results.push(Err(ProviderError::StreamerNotFound(user_id.to_string())));
+                         }
+                     }
+                     continue;
+                 }
+             };
+
+             // Create a map of user_id -> stream for quick lookup
+             let stream_map: HashMap<_, _> = streams
+                 .data
+                 .into_iter()
+                 .map(|s| (s.user_id.clone(), s))
+                 .collect();
+
+             debug!("Stream map has {} entry/entries", stream_map.len());
+
+             // Step 3: Combine user and stream data for each requested user_id
+             for user_id in chunk {
+                 if let Some(user) = user_map.get(user_id) {
+                     let mut stream_info = StreamInfo::new("twitch", &user.id, &user.display_name);
+                     stream_info.avatar_url = Some(user.profile_image_url.clone());
+
+                     if let Some(stream) = stream_map.get(user_id) {
+                         // User is live
+                         stream_info.is_live = true;
+                         stream_info.title = Some(stream.title.clone());
+                         stream_info.viewer_count = Some(stream.viewer_count);
+                         stream_info.category = Some(stream.game_name.clone());
+                         stream_info.language = Some(stream.language.clone());
+                         stream_info.tags = stream.tags.clone();
+
+                         // Parse started_at timestamp
+                         if let Ok(started_at) = stream.started_at.parse::<DateTime<Utc>>() {
+                             stream_info.started_at = Some(started_at);
+                         }
+
+                         // Build thumbnail URL (replace template variables)
+                         let thumbnail = stream.thumbnail_url
+                             .replace("{width}", "1280")
+                             .replace("{height}", "720");
+                         stream_info.thumbnail_url = Some(thumbnail);
+                     } else {
+                         // User is offline
+                         stream_info.is_live = false;
+                     }
+
+                     stream_info.last_updated = Utc::now();
+                     debug!("Successfully processed stream for {} (live: {})", user_id, stream_info.is_live);
+                     results.push(Ok(stream_info));
                  } else {
                      warn!("User {} not found in Twitch API response", user_id);
                      results.push(Err(ProviderError::StreamerNotFound(user_id.to_string())));
