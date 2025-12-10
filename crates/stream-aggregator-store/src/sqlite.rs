@@ -422,7 +422,7 @@ impl StreamStore for SqliteStore {
             r#"
             INSERT INTO tracked_streamers (
                 platform, user_id, custom_name, group_name, priority, labels, source, discovery_rule_id, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             "#,
         )
         .bind(&streamer.platform)
@@ -435,7 +435,7 @@ impl StreamStore for SqliteStore {
             StreamerSource::Manual => "manual",
             StreamerSource::Discovery => "discovery",
         })
-        .bind(&streamer.discovery_rule_id)
+        .bind(&streamer.discovery_rule_id.as_deref())
         .bind(streamer.created_at.to_rfc3339())
         .execute(&*self.pool)
         .await;
@@ -621,7 +621,7 @@ impl StreamStore for SqliteStore {
             StreamerSource::Manual => "manual",
             StreamerSource::Discovery => "discovery",
         })
-        .bind(&streamer.discovery_rule_id)
+        .bind(streamer.discovery_rule_id.as_deref())
         .bind(&streamer.platform)
         .bind(&streamer.user_id)
         .execute(&*self.pool)
