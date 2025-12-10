@@ -15,6 +15,10 @@ use stream_aggregator_scheduler::{Scheduler, SchedulerConfig};
 #[command(name = "stream-aggregator")]
 #[command(about = "Multi-platform live stream aggregator", version, author)]
 struct Cli {
+    /// Configuration file path (TOML format)
+    #[arg(short, long)]
+    config: Option<String>,
+
     /// Server host to bind to
     #[arg(long, default_value = "127.0.0.1", env = "HOST")]
     host: String,
@@ -74,17 +78,44 @@ async fn main() -> Result<()> {
     info!("🚀 StreamAggregator v{} starting...", env!("CARGO_PKG_VERSION"));
 
     // Load configuration
-    let config = AppConfig::from_env_and_cli(
-        cli.host,
-        cli.port,
-        cli.api_keys,
-        cli.require_auth_all,
-        cli.scrape_interval_secs,
-        cli.twitch_client_id,
-        cli.twitch_client_secret,
-        cli.store_backend,
-        cli.database_url,
-    );
+    let config = if let Some(config_path) = &cli.config {
+        info!("📄 Loading configuration from file: {}", config_path);
+        let mut config = AppConfig::from_file(config_path)
+            .map_err(|e| anyhow::anyhow!("Failed to load config from {}: {}", config_path, e))?;
+
+        // Override with CLI args (CLI takes precedence)
+        config.server.host = cli.host;
+        config.server.port = cli.port;
+        config.auth.api_keys = cli.api_keys
+            .map(|keys| keys.split(',').map(|s| s.trim().to_string()).collect())
+            .unwrap_or(config.auth.api_keys);
+        config.auth.require_all = cli.require_auth_all;
+        config.scheduler.interval_secs = cli.scrape_interval_secs;
+        if cli.twitch_client_id.is_some() {
+            config.providers.twitch.client_id = cli.twitch_client_id;
+        }
+        if cli.twitch_client_secret.is_some() {
+            config.providers.twitch.client_secret = cli.twitch_client_secret;
+        }
+        config.store.backend = cli.store_backend;
+        if cli.database_url.is_some() {
+            config.store.database_url = cli.database_url;
+        }
+
+        config
+    } else {
+        AppConfig::from_env_and_cli(
+            cli.host,
+            cli.port,
+            cli.api_keys,
+            cli.require_auth_all,
+            cli.scrape_interval_secs,
+            cli.twitch_client_id,
+            cli.twitch_client_secret,
+            cli.store_backend,
+            cli.database_url,
+        )
+    };
 
     // Create store
     let store_registry = StoreRegistry::register(&config.store).await?;

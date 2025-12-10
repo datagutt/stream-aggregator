@@ -1,6 +1,8 @@
 //! Configuration management
 
 use serde::{Deserialize, Serialize};
+use std::fs;
+use std::path::Path;
 
 /// Main application configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -206,6 +208,13 @@ fn default_true() -> bool {
 }
 
 impl AppConfig {
+    /// Load configuration from TOML file
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, Box<dyn std::error::Error>> {
+        let contents = fs::read_to_string(path)?;
+        let config: AppConfig = toml::from_str(&contents)?;
+        Ok(config)
+    }
+
     /// Load configuration from environment variables and CLI args
     pub fn from_env_and_cli(
         host: String,

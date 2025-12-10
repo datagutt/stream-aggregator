@@ -1,0 +1,53 @@
+# StreamAggregator Configuration
+# This file contains all configuration options for the StreamAggregator service
+
+[server]
+host = "127.0.0.1"
+port = 8080
+
+[auth]
+# API keys for authentication (comma-separated)
+api_keys = []
+# Require authentication for all requests (including reads)
+require_all = false
+
+[scheduler]
+# Scrape interval in seconds
+interval_secs = 300
+# Maximum concurrent scrape tasks
+max_concurrent = 10
+
+[store]
+# Storage backend type ("memory", "sqlite", "postgres")
+backend = "memory"
+# Database connection URL (for sqlite/postgres)
+# database_url = "sqlite://stream_aggregator.db"
+
+[providers.twitch]
+enabled = true
+# client_id = "your_twitch_client_id"
+# client_secret = "your_twitch_client_secret"
+
+[providers.youtube]
+enabled = true
+
+[providers.kick]
+enabled = true
+# Request delay (seconds) - Kick is sensitive to rapid requests
+# request_delay_secs = 2
+
+[providers.dlive]
+enabled = true
+
+[providers.trovo]
+enabled = true
+# client_id = ""
+
+[providers.guac]
+enabled = true
+
+[providers.angelthump]
+enabled = true
+
+[providers.robotstreamer]
+enabled = true
