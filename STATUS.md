@@ -3,6 +3,7 @@
 ## ✅ Completed Features
 
 ### Core Infrastructure (100%)
+
 - ✅ Workspace setup with 6 crates
 - ✅ Core data models (`StreamInfo`, `TrackedStreamer`, `DiscoveryRule`)
 - ✅ Core traits (`PlatformProvider`, `StreamStore`)
@@ -11,12 +12,14 @@
 - ✅ Full test coverage for core functionality
 
 ### Storage Layer (100%)
+
 - ✅ Memory store implementation (DashMap-based)
 - ✅ Full CRUD operations for streams, streamers, and discovery rules
 - ✅ Query/filter support with pagination
 - ✅ 100% test coverage (4/4 tests passing)
 
 ### Platform Providers (11% - 1/9)
+
 - ✅ **Twitch Provider**
   - OAuth2 Client Credentials flow with auto-refresh
   - Helix API integration
@@ -34,6 +37,7 @@
 - ⏳ RobotStreamer (pending)
 
 ### REST API (100%)
+
 - ✅ Axum-based HTTP server
 - ✅ 7 endpoints implemented:
   - `GET /health` - Health check
@@ -48,6 +52,7 @@
 - ✅ Proper error responses
 
 ### Authentication & Security (100%)
+
 - ✅ API key authentication middleware
 - ✅ Flexible authentication modes:
   - Public access (no auth)
@@ -61,6 +66,7 @@
 - ✅ 7/7 authentication tests passing
 
 ### Main Binary (100%)
+
 - ✅ CLI with clap (help, version, all options)
 - ✅ Environment variable support for all config
 - ✅ Beautiful startup logging with emojis
@@ -101,6 +107,7 @@ See `QUICKSTART.md` for complete instructions.
 ## 📝 What Works Right Now
 
 ### ✅ Fully Operational
+
 1. **Start server** with Twitch integration
 2. **Add Twitch streamers** to track via API
 3. **Fetch live stream data** from Twitch in real-time
@@ -115,7 +122,7 @@ See `QUICKSTART.md` for complete instructions.
 # Add a streamer to track
 curl -X POST http://127.0.0.1:8080/api/v1/streamers \
   -H "Content-Type: application/json" \
-  -d '{"platform": "twitch", "user_id": "ninja"}'
+  -d '{"platform": "twitch", "username": "ninja"}'
 
 # Get their stream info (fetches from Twitch API)
 curl http://127.0.0.1:8080/api/v1/streams
@@ -127,12 +134,14 @@ curl http://127.0.0.1:8080/api/v1/streamers
 ## 🔧 Pending Features
 
 ### High Priority
+
 - ⏳ Scheduler/scraper (periodic fetching)
   - Currently: Manual API calls only
   - Needed for: Automatic stream updates
   - Estimate: 2-3 hours
 
 ### Medium Priority
+
 - ⏳ Additional platform providers (YouTube, Kick, etc.)
   - Each provider: 1-2 hours
   - Twitch provider serves as template
@@ -141,6 +150,7 @@ curl http://127.0.0.1:8080/api/v1/streamers
   - Needed for: Persistence across restarts
 
 ### Low Priority
+
 - ⏳ WebSocket API for real-time updates
 - ⏳ Discovery rules (auto-tracking by tags/categories)
 - ⏳ Metrics/Prometheus integration
@@ -150,12 +160,14 @@ curl http://127.0.0.1:8080/api/v1/streamers
 ## 🎯 Next Steps
 
 ### For Immediate Testing
+
 1. Get Twitch API credentials
 2. Follow `QUICKSTART.md`
 3. Add streamers via API
 4. Integrate with your frontend
 
 ### For Production Deployment
+
 1. **Add scheduler** (automatic updates)
 2. **Add persistent storage** (SQLite or PostgreSQL)
 3. **Set up reverse proxy** (nginx/caddy)
@@ -163,6 +175,7 @@ curl http://127.0.0.1:8080/api/v1/streamers
 5. **Set up monitoring** (health checks)
 
 ### For Full Feature Parity with LSND
+
 1. Implement remaining 8 platform providers
 2. Add discovery rules system
 3. Add WebSocket real-time API
@@ -180,6 +193,7 @@ curl http://127.0.0.1:8080/api/v1/streamers
 ## 🏗️ Architecture Quality
 
 ### ✅ Production-Ready Aspects
+
 - Modular crate structure
 - Trait-based abstractions
 - Comprehensive error handling
@@ -189,6 +203,7 @@ curl http://127.0.0.1:8080/api/v1/streamers
 - Concurrent data structures
 
 ### ⚠️ Missing for Production
+
 - No automatic scraping (manual API calls only)
 - No persistence (restarts lose data)
 - No metrics/observability
@@ -212,6 +227,7 @@ curl http://127.0.0.1:8080/api/v1/streamers
 **StreamAggregator is ready for testing and development!**
 
 You can:
+
 - ✅ Start the server
 - ✅ Add Twitch streamers
 - ✅ Fetch real-time stream data
@@ -219,6 +235,7 @@ You can:
 - ✅ Protect admin operations with API keys
 
 The foundation is **solid, production-quality Rust** with:
+
 - Clean architecture
 - Full test coverage
 - Comprehensive documentation

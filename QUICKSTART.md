@@ -73,7 +73,7 @@ curl -X POST http://127.0.0.1:8080/api/v1/streamers \
   -H "Content-Type: application/json" \
   -d '{
     "platform": "twitch",
-    "user_id": "ninja"
+    "username": "ninja"
   }'
 
 # With authentication (if API keys are set)
@@ -82,7 +82,7 @@ curl -X POST http://127.0.0.1:8080/api/v1/streamers \
   -H "X-API-Key: secret-key-123" \
   -d '{
     "platform": "twitch",
-    "user_id": "ninja"
+    "username": "ninja"
   }'
 ```
 
