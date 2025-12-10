@@ -9,6 +9,9 @@ members = [
     "crates/stream-aggregator-migrator",
     "crates/providers/stream-aggregator-provider-twitch",
 ]
+default-members = [
+    "crates/stream-aggregator",
+]
 
 [workspace.package]
 version = "0.1.0"
