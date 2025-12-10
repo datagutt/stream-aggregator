@@ -94,6 +94,12 @@ impl Scheduler {
 
         info!("Scraping {} tracked streamer(s)", streamers.len());
 
+        // Create a map of (platform, user_id) -> TrackedStreamer for metadata lookup
+        let streamer_metadata: HashMap<(String, String), _> = streamers
+            .iter()
+            .map(|s| ((s.platform.clone(), s.user_id.clone()), s.clone()))
+            .collect();
+
         // Group streamers by platform for batch fetching
         let mut by_platform: HashMap<String, Vec<String>> = HashMap::new();
         for streamer in streamers {
@@ -115,8 +121,9 @@ impl Scheduler {
             };
 
             let store = self.store.clone();
+            let metadata = streamer_metadata.clone();
             let task = tokio::spawn(async move {
-                scrape_platform(provider, store, user_ids).await
+                scrape_platform(provider, store, user_ids, metadata).await
             });
             tasks.push(task);
         }
@@ -153,6 +160,7 @@ async fn scrape_platform(
     provider: Arc<dyn PlatformProvider>,
     store: Arc<dyn StreamStore>,
     user_ids: Vec<String>,
+    streamer_metadata: HashMap<(String, String), stream_aggregator_core::TrackedStreamer>,
 ) -> (usize, usize) {
     let platform_id = provider.platform_id();
     debug!(
@@ -169,8 +177,39 @@ async fn scrape_platform(
 
     for result in results {
         match result {
-            Ok(stream_info) => {
-                // Store the stream information
+            Ok(mut stream_info) => {
+                // Enrich stream metadata with tracked streamer metadata
+                if let Some(tracked) = streamer_metadata.get(&(stream_info.platform.clone(), stream_info.user_id.clone())) {
+                    // Add group to metadata
+                    if let Some(ref group) = tracked.group {
+                        stream_info.metadata.insert(
+                            "group".to_string(),
+                            serde_json::Value::String(group.clone())
+                        );
+                    }
+                    
+                    // Add priority to metadata
+                    if let Some(priority) = tracked.priority {
+                        stream_info.metadata.insert(
+                            "priority".to_string(),
+                            serde_json::Value::Number(priority.into())
+                        );
+                    }
+                    
+                    // Add labels to metadata
+                    if !tracked.labels.is_empty() {
+                        let labels_map: serde_json::Map<String, serde_json::Value> = tracked.labels
+                            .iter()
+                            .map(|(k, v)| (k.clone(), serde_json::Value::String(v.clone())))
+                            .collect();
+                        stream_info.metadata.insert(
+                            "labels".to_string(),
+                            serde_json::Value::Object(labels_map)
+                        );
+                    }
+                }
+                
+                // Store the enriched stream information
                 match store.upsert_stream(&stream_info).await {
                     Ok(_) => {
                         debug!(
