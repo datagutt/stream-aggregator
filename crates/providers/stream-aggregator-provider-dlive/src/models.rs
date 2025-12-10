@@ -20,14 +20,6 @@ impl DLiveConfig {
     }
 }
 
-/// GraphQL request structure
-#[derive(Debug, Serialize)]
-pub struct GraphQLRequest {
-    pub query: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub variables: Option<serde_json::Value>,
-}
-
 /// DLive GraphQL response
 #[derive(Debug, Deserialize)]
 pub struct GraphQLResponse {
@@ -49,13 +41,14 @@ pub struct UserByDisplayNameData {
     pub user_by_display_name: Option<DLiveUser>,
 }
 
-/// DLive user information
+/// DLive user information - only essential fields
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DLiveUser {
-    pub username: String,
-    pub display_name: String,
+    pub id: String,
     pub avatar: String,
+    pub displayname: String,
+    pub username: String,
     pub livestream: Option<DLiveLivestream>,
 }
 
@@ -65,7 +58,6 @@ pub struct DLiveUser {
 pub struct DLiveLivestream {
     pub id: String,
     pub title: String,
-    pub total_reward: String,
     pub watching_count: u64,
     pub language: Option<DLiveLanguage>,
     pub category: Option<DLiveCategory>,

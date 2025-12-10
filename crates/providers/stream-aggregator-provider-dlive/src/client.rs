@@ -11,7 +11,7 @@ use stream_aggregator_core::{
     traits::PlatformProvider,
 };
 
-use crate::models::{DLiveConfig, GraphQLRequest, GraphQLResponse};
+use crate::models::{DLiveConfig, GraphQLResponse};
 
 const DLIVE_GRAPHQL_ENDPOINT: &str = "https://graphigo.prd.dlive.tv";
 
@@ -31,12 +31,29 @@ impl DLiveProvider {
         Self { client }
     }
 
-    /// Execute a GraphQL query
-    async fn execute_query(&self, query: &str) -> Result<GraphQLResponse, ProviderError> {
-        let request = GraphQLRequest {
-            query: query.to_string(),
-            variables: None,
-        };
+
+
+    /// Fetch user by display name
+    async fn fetch_user(&self, display_name: &str) -> Result<GraphQLResponse, ProviderError> {
+        debug!("Fetching DLive user: {}", display_name);
+
+        let request = serde_json::json!({
+            "operationName": "LivestreamPage",
+            "variables": {
+                "displayname": display_name,
+                "add": false,
+                "isLoggedIn": false,
+                "isMe": false,
+                "showUnpicked": false,
+                "order": "PickTime"
+            },
+            "extensions": {
+                "persistedQuery": {
+                    "version": 1,
+                    "sha256Hash": "b8c7cd860dbe43512fb7574eefdc60cefd9eb30d35b982cc7b9a23dc4093524b"
+                }
+            }
+        });
 
         let response = self.client
             .post(DLIVE_GRAPHQL_ENDPOINT)
@@ -58,47 +75,7 @@ impl DLiveProvider {
             .await
             .map_err(|e| ProviderError::ParseError(format!("Failed to parse DLive response: {}", e)))?;
 
-        // Check for GraphQL errors
-        if !gql_response.errors.is_empty() {
-            let error_msg = gql_response.errors
-                .iter()
-                .map(|e| e.message.as_str())
-                .collect::<Vec<_>>()
-                .join(", ");
-            return Err(ProviderError::ParseError(format!("DLive GraphQL errors: {}", error_msg)));
-        }
-
         Ok(gql_response)
-    }
-
-    /// Fetch user by display name
-    async fn fetch_user(&self, display_name: &str) -> Result<GraphQLResponse, ProviderError> {
-        debug!("Fetching DLive user: {}", display_name);
-
-        let query = format!(
-            r#"{{
-                userByDisplayName(displayname: "{}") {{
-                    username
-                    displayname
-                    avatar
-                    livestream {{
-                        id
-                        title
-                        totalReward
-                        watchingCount
-                        language {{
-                            language
-                        }}
-                        category {{
-                            title
-                        }}
-                    }}
-                }}
-            }}"#,
-            display_name
-        );
-
-        self.execute_query(&query).await
     }
 }
 
@@ -129,7 +106,7 @@ impl PlatformProvider for DLiveProvider {
             .and_then(|d| d.user_by_display_name)
             .ok_or_else(|| ProviderError::StreamerNotFound(user_id.to_string()))?;
 
-        let mut stream_info = StreamInfo::new("dlive", &user.username, &user.display_name);
+        let mut stream_info = StreamInfo::new("dlive", &user.username, &user.displayname);
         stream_info.avatar_url = Some(user.avatar);
 
         if let Some(livestream) = user.livestream {
