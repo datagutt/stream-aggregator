@@ -13,7 +13,7 @@ use stream_aggregator_core::{
 };
 
 use crate::auth::TokenManager;
-use crate::models::{TwitchConfig, TwitchError, StreamsResponse, UsersResponse};
+use crate::models::{TwitchConfig, StreamsResponse, UsersResponse};
 
 const HELIX_API_BASE: &str = "https://api.twitch.tv/helix";
 
@@ -88,45 +88,74 @@ impl TwitchProvider {
 
 
 
-    /// Fetch stream information by user ID
-    async fn fetch_stream_by_user_id(&self, user_id: &str) -> Result<StreamInfo, ProviderError> {
-        let headers = self.auth_headers().await?;
+     /// Fetch stream information by user ID
+     async fn fetch_stream_by_user_id(&self, user_id: &str) -> Result<StreamInfo, ProviderError> {
+         debug!("Fetching stream info for user_id: {}", user_id);
+         let headers = self.auth_headers().await?;
 
-        // First, get user info
-        let user_url = format!("{}/users?id={}", HELIX_API_BASE, user_id);
-        let mut user_request = self.client.get(&user_url);
-        for (key, value) in &headers {
-            user_request = user_request.header(*key, value);
-        }
+         // First, get user info
+         let user_url = format!("{}/users?id={}", HELIX_API_BASE, user_id);
+         debug!("GET {}", user_url);
+         let mut user_request = self.client.get(&user_url);
+         for (key, value) in &headers {
+             user_request = user_request.header(*key, value);
+         }
 
-        let user_response = user_request.send().await.map_err(|e| {
-            ProviderError::HttpError(format!("Failed to fetch Twitch user info: {}", e))
-        })?;
+         let user_response = user_request.send().await.map_err(|e| {
+             error!("Network error: {}", e);
+             ProviderError::HttpError(format!("Failed to fetch Twitch user info: {}", e))
+         })?;
 
-        let users: UsersResponse = user_response.json().await.map_err(|e| {
-            ProviderError::ParseError(format!("Failed to parse Twitch user response: {}", e))
-        })?;
+         let status = user_response.status();
+         debug!("Response status: {}", status);
 
-        if users.data.is_empty() {
-            return Err(ProviderError::StreamerNotFound(user_id.to_string()));
-        }
+         if !status.is_success() {
+             let body = user_response.text().await.unwrap_or_default();
+             error!("Twitch API error {} (user: {}): {}", status, user_id, body);
+             return Err(ProviderError::HttpError(format!("Twitch API error {}: {}", status, body)));
+         }
+
+         let users: UsersResponse = user_response.json().await.map_err(|e| {
+             error!("Failed to parse Twitch user response: {}", e);
+             ProviderError::ParseError(format!("Failed to parse Twitch user response: {}", e))
+         })?;
+
+         debug!("Found {} user(s)", users.data.len());
+         if users.data.is_empty() {
+             warn!("User not found in Twitch API: {}", user_id);
+             return Err(ProviderError::StreamerNotFound(user_id.to_string()));
+         }
 
         let user = &users.data[0];
 
-        // Then check if they're streaming
-        let stream_url = format!("{}/streams?user_id={}", HELIX_API_BASE, user_id);
-        let mut stream_request = self.client.get(&stream_url);
-        for (key, value) in &headers {
-            stream_request = stream_request.header(*key, value);
-        }
+         // Then check if they're streaming
+         let stream_url = format!("{}/streams?user_id={}", HELIX_API_BASE, user_id);
+         debug!("GET {}", stream_url);
+         let mut stream_request = self.client.get(&stream_url);
+         for (key, value) in &headers {
+             stream_request = stream_request.header(*key, value);
+         }
 
-        let stream_response = stream_request.send().await.map_err(|e| {
-            ProviderError::HttpError(format!("Failed to fetch Twitch stream: {}", e))
-        })?;
+         let stream_response = stream_request.send().await.map_err(|e| {
+             error!("Network error: {}", e);
+             ProviderError::HttpError(format!("Failed to fetch Twitch stream: {}", e))
+         })?;
 
-        let streams: StreamsResponse = stream_response.json().await.map_err(|e| {
-            ProviderError::ParseError(format!("Failed to parse Twitch streams response: {}", e))
-        })?;
+         let stream_status = stream_response.status();
+         debug!("Response status: {}", stream_status);
+
+         if !stream_status.is_success() {
+             let body = stream_response.text().await.unwrap_or_default();
+             error!("Twitch stream API error {} (user: {}): {}", stream_status, user_id, body);
+             return Err(ProviderError::HttpError(format!("Twitch API error {}: {}", stream_status, body)));
+         }
+
+         let streams: StreamsResponse = stream_response.json().await.map_err(|e| {
+             error!("Failed to parse Twitch streams response: {}", e);
+             ProviderError::ParseError(format!("Failed to parse Twitch streams response: {}", e))
+         })?;
+
+         debug!("Found {} stream(s) for user", streams.data.len());
 
         let mut stream_info = StreamInfo::new("twitch", &user.id, &user.display_name);
         stream_info.avatar_url = Some(user.profile_image_url.clone());
@@ -187,81 +216,119 @@ impl PlatformProvider for TwitchProvider {
         self.fetch_stream_by_user_id(user_id).await
     }
 
-    async fn fetch_streams_batch(&self, user_ids: &[String]) -> Vec<Result<StreamInfo, ProviderError>> {
-        if user_ids.is_empty() {
-            return Vec::new();
-        }
+     async fn fetch_streams_batch(&self, user_ids: &[String]) -> Vec<Result<StreamInfo, ProviderError>> {
+         if user_ids.is_empty() {
+             return Vec::new();
+         }
 
-        debug!(count = user_ids.len(), "Batch fetching Twitch streams");
+         debug!(count = user_ids.len(), "Batch fetching Twitch streams");
 
-        // Twitch supports up to 100 user IDs per request
-        let chunk_size = 100;
-        let mut results = Vec::with_capacity(user_ids.len());
+         // Twitch supports up to 100 user IDs per request
+         let chunk_size = 100;
+         let mut results = Vec::with_capacity(user_ids.len());
 
-        for chunk in user_ids.chunks(chunk_size) {
-            let headers = match self.auth_headers().await {
-                Ok(h) => h,
-                Err(e) => {
-                    // If auth fails, return error for all in this chunk
-                    for _ in chunk {
-                        results.push(Err(e.clone()));
+         for (chunk_idx, chunk) in user_ids.chunks(chunk_size).enumerate() {
+             debug!("Processing chunk {} with {} user(s)", chunk_idx, chunk.len());
+             let headers = match self.auth_headers().await {
+                 Ok(h) => {
+                     debug!("Auth headers obtained for chunk {}", chunk_idx);
+                     h
+                 },
+                 Err(e) => {
+                     error!("Auth failed for chunk {}: {}", chunk_idx, e);
+                     // If auth fails, return error for all in this chunk
+                     for user_id in chunk {
+                         results.push(Err(e.clone()));
+                     }
+                     continue;
+                 }
+             };
+
+             // Build query string with multiple user ID parameters
+             let url = format!("{}/users", HELIX_API_BASE);
+             debug!("GET {} with {} user IDs: {:?}", url, chunk.len(), chunk);
+             let mut request = self.client.get(&url);
+
+             // Build all query params at once to avoid overwriting
+             let query_params: Vec<(&str, &str)> = chunk
+                 .iter()
+                 .map(|id| ("id", id.as_str()))
+                 .collect();
+             request = request.query(&query_params);
+
+             for (key, value) in &headers {
+                 request = request.header(*key, value);
+             }
+
+             let response = match request.send().await {
+                 Ok(r) => {
+                     debug!("Batch request sent, response status: {}", r.status());
+                     r
+                 },
+                 Err(e) => {
+                     error!("Batch request network error: {}", e);
+                     let err = ProviderError::HttpError(format!("Batch request failed: {}", e));
+                     for user_id in chunk {
+                         results.push(Err(err.clone()));
+                     }
+                     continue;
+                 }
+             };
+
+             let status = response.status();
+             if !status.is_success() {
+                 let body = response.text().await.unwrap_or_default();
+                 error!("Batch request returned error {}: {}", status, body);
+                 let err = ProviderError::HttpError(format!("Batch request error {}: {}", status, body));
+                 for user_id in chunk {
+                     results.push(Err(err.clone()));
+                 }
+                 continue;
+             }
+
+             let users: UsersResponse = match response.json::<UsersResponse>().await {
+                 Ok(u) => {
+                     debug!("Batch response parsed, found {} user(s)", u.data.len());
+                     u
+                 },
+                 Err(e) => {
+                     error!("Failed to parse batch response: {}", e);
+                     let err = ProviderError::ParseError(format!("Failed to parse batch response: {}", e));
+                     for user_id in chunk {
+                         results.push(Err(err.clone()));
                     }
                     continue;
                 }
             };
 
-            // Build query string with multiple user ID parameters
-            let url = format!("{}/users", HELIX_API_BASE);
-            let mut request = self.client.get(&url);
+             // Create a map of user_id -> user for quick lookup
+             let user_map: HashMap<_, _> = users
+                 .data
+                 .into_iter()
+                 .map(|u| (u.id.clone(), u))
+                 .collect();
 
-            for user_id in chunk {
-                request = request.query(&[("id", user_id)]);
-            }
+             debug!("User map has {} entry/entries, chunk has {} request(s)", user_map.len(), chunk.len());
 
-            for (key, value) in &headers {
-                request = request.header(*key, value);
-            }
-
-            let response = match request.send().await {
-                Ok(r) => r,
-                Err(e) => {
-                    let err = ProviderError::HttpError(format!("Batch request failed: {}", e));
-                    for _ in chunk {
-                        results.push(Err(err.clone()));
-                    }
-                    continue;
-                }
-            };
-
-            let users: UsersResponse = match response.json().await {
-                Ok(u) => u,
-                Err(e) => {
-                    let err = ProviderError::ParseError(format!("Failed to parse batch response: {}", e));
-                    for _ in chunk {
-                        results.push(Err(err.clone()));
-                    }
-                    continue;
-                }
-            };
-
-            // Create a map of user_id -> user for quick lookup
-            let user_map: HashMap<_, _> = users
-                .data
-                .into_iter()
-                .map(|u| (u.id.clone(), u))
-                .collect();
-
-            // Fetch stream status for all found users
-            for user_id in chunk {
-                if let Some(user) = user_map.get(user_id) {
-                    match self.fetch_stream_by_user_id(&user.id).await {
-                        Ok(info) => results.push(Ok(info)),
-                        Err(e) => results.push(Err(e)),
-                    }
-                } else {
-                    results.push(Err(ProviderError::StreamerNotFound(user_id.to_string())));
-                }
-            }
+             // Fetch stream status for all found users
+             for user_id in chunk {
+                 if let Some(user) = user_map.get(user_id) {
+                     debug!("Found {} in response (login: {}, display: {})", user_id, user.login, user.display_name);
+                     match self.fetch_stream_by_user_id(&user.id).await {
+                         Ok(info) => {
+                             debug!("Successfully fetched stream for {}", user_id);
+                             results.push(Ok(info));
+                         },
+                         Err(e) => {
+                             error!("Failed to fetch stream for {}: {}", user_id, e);
+                             results.push(Err(e));
+                         }
+                     }
+                 } else {
+                     warn!("User {} not found in Twitch API response", user_id);
+                     results.push(Err(ProviderError::StreamerNotFound(user_id.to_string())));
+                 }
+             }
         }
 
         results

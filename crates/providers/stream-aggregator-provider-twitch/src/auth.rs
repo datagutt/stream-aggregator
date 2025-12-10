@@ -53,7 +53,8 @@ impl TokenManager {
 
     /// Refresh the OAuth2 token
     async fn refresh_token(&self) -> Result<String, TwitchError> {
-        info!("Refreshing Twitch OAuth2 token");
+        info!("Refreshing Twitch OAuth2 token with client_id: {}", 
+            self.config.client_id.chars().take(10).collect::<String>() + "...");
 
         let response = self
             .client
@@ -65,12 +66,17 @@ impl TokenManager {
             ])
             .send()
             .await
-            .map_err(|e| TwitchError::AuthError(format!("Failed to request token: {}", e)))?;
+            .map_err(|e| {
+                error!("Token request failed with network error: {}", e);
+                TwitchError::AuthError(format!("Failed to request token: {}", e))
+            })?;
 
-        if !response.status().is_success() {
-            let status = response.status();
+        let status = response.status();
+        debug!("Token request status: {}", status);
+
+        if !status.is_success() {
             let body = response.text().await.unwrap_or_default();
-            error!("Token request failed: {} - {}", status, body);
+            error!("Token request failed: {} - Body: {}", status, body);
             return Err(TwitchError::AuthError(format!(
                 "Token request failed with status {}: {}",
                 status, body
@@ -80,7 +86,10 @@ impl TokenManager {
         let token_response: TokenResponse = response
             .json()
             .await
-            .map_err(|e| TwitchError::ParseError(format!("Failed to parse token response: {}", e)))?;
+            .map_err(|e| {
+                error!("Failed to parse token response: {}", e);
+                TwitchError::ParseError(format!("Failed to parse token response: {}", e))
+            })?;
 
         let access_token = token_response.access_token.clone();
         let expires_in = token_response.expires_in;
@@ -90,7 +99,8 @@ impl TokenManager {
         token_data.access_token = Some(access_token.clone());
         token_data.expires_at = Some(Instant::now() + Duration::from_secs(expires_in.saturating_sub(60)));
 
-        info!("Twitch OAuth2 token refreshed, expires in {} seconds", expires_in);
+        info!("Twitch OAuth2 token refreshed successfully, expires in {} seconds", expires_in);
+        debug!("New token (first 20 chars): {}...", access_token.chars().take(20).collect::<String>());
         Ok(access_token)
     }
 
