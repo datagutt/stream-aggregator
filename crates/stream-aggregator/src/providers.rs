@@ -49,7 +49,7 @@ macro_rules! register_providers {
 		$(
 			#[cfg(feature = $feature)]
 			{
-				let provider_config: &$config_type = &$config.$config_field;
+				let provider_config: $config_type = $config.$config_field.clone();
 				if !provider_config.enabled {
 					info!(concat!("⏭️  ", $name, " provider disabled in configuration"));
 				} else {
@@ -100,11 +100,11 @@ impl ProviderRegistry {
 				config_type: crate::config::TwitchProviderConfig,
 				config_field: twitch,
 				name: "Twitch",
-				init: |cfg: &crate::config::TwitchProviderConfig| async {
-					let (Some(client_id), Some(client_secret)) = (&cfg.client_id, &cfg.client_secret) else {
+				init: |cfg: crate::config::TwitchProviderConfig| async {
+					let (Some(client_id), Some(client_secret)) = (cfg.client_id, cfg.client_secret) else {
 						anyhow::bail!("Missing credentials - set TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET");
 					};
-					let twitch_config = TwitchConfig::new(client_id.clone(), client_secret.clone());
+					let twitch_config = TwitchConfig::new(client_id, client_secret);
 					Ok(TwitchProvider::new(twitch_config))
 				}
 			},
@@ -114,9 +114,9 @@ impl ProviderRegistry {
 				config_type: crate::config::YouTubeProviderConfig,
 				config_field: youtube,
 				name: "YouTube",
-				init: |_cfg: &crate::config::YouTubeProviderConfig| async {
+				init: |_cfg: crate::config::YouTubeProviderConfig| async {
 					let youtube_config = YouTubeConfig::default();
-					Ok(YouTubeProvider::new(youtube_config))
+					Ok::<YouTubeProvider, anyhow::Error>(YouTubeProvider::new(youtube_config))
 				}
 			},
 			{
@@ -125,9 +125,9 @@ impl ProviderRegistry {
 				config_type: crate::config::KickProviderConfig,
 				config_field: kick,
 				name: "Kick",
-				init: |_cfg: &crate::config::KickProviderConfig| async {
+				init: |_cfg: crate::config::KickProviderConfig| async {
 					let kick_config = KickConfig::default();
-					Ok(KickProvider::new(kick_config))
+					KickProvider::new(kick_config).map_err(|e| anyhow::anyhow!("Failed to create Kick provider: {}", e))
 				}
 			},
 			{
@@ -136,9 +136,9 @@ impl ProviderRegistry {
 				config_type: crate::config::DLiveProviderConfig,
 				config_field: dlive,
 				name: "DLive",
-				init: |_cfg: &crate::config::DLiveProviderConfig| async {
+				init: |_cfg: crate::config::DLiveProviderConfig| async {
 					let dlive_config = DLiveConfig::default();
-					Ok(DLiveProvider::new(dlive_config))
+					Ok::<DLiveProvider, anyhow::Error>(DLiveProvider::new(dlive_config))
 				}
 			},
 			{
@@ -147,9 +147,9 @@ impl ProviderRegistry {
 				config_type: crate::config::TrovoProviderConfig,
 				config_field: trovo,
 				name: "Trovo",
-				init: |_cfg: &crate::config::TrovoProviderConfig| async {
+				init: |_cfg: crate::config::TrovoProviderConfig| async {
 					let trovo_config = TrovoConfig::default();
-					Ok(TrovoProvider::new(trovo_config))
+					Ok::<TrovoProvider, anyhow::Error>(TrovoProvider::new(trovo_config))
 				}
 			},
 			{
@@ -158,9 +158,9 @@ impl ProviderRegistry {
 				config_type: crate::config::GuacProviderConfig,
 				config_field: guac,
 				name: "Guac",
-				init: |_cfg: &crate::config::GuacProviderConfig| async {
+				init: |_cfg: crate::config::GuacProviderConfig| async {
 					let guac_config = GuacConfig::default();
-					Ok(GuacProvider::new(guac_config))
+					Ok::<GuacProvider, anyhow::Error>(GuacProvider::new(guac_config))
 				}
 			},
 			{
@@ -169,9 +169,9 @@ impl ProviderRegistry {
 				config_type: crate::config::AngelThumpProviderConfig,
 				config_field: angelthump,
 				name: "AngelThump",
-				init: |_cfg: &crate::config::AngelThumpProviderConfig| async {
+				init: |_cfg: crate::config::AngelThumpProviderConfig| async {
 					let angelthump_config = AngelThumpConfig::default();
-					Ok(AngelThumpProvider::new(angelthump_config))
+					Ok::<AngelThumpProvider, anyhow::Error>(AngelThumpProvider::new(angelthump_config))
 				}
 			},
 			{
@@ -180,9 +180,9 @@ impl ProviderRegistry {
 				config_type: crate::config::RobotStreamerProviderConfig,
 				config_field: robotstreamer,
 				name: "RobotStreamer",
-				init: |_cfg: &crate::config::RobotStreamerProviderConfig| async {
+				init: |_cfg: crate::config::RobotStreamerProviderConfig| async {
 					let robotstreamer_config = RobotStreamerConfig::default();
-					Ok(RobotStreamerProvider::new(robotstreamer_config))
+					Ok::<RobotStreamerProvider, anyhow::Error>(RobotStreamerProvider::new(robotstreamer_config))
 				}
 			},
 		]);
