@@ -96,7 +96,7 @@ let client = Client::builder()
         debug!("Fetching Kick channel: {}", username);
 
         // Ensure we have XSRF token
-        self.ensure_xsrf_token().await?;
+        //self.ensure_xsrf_token().await?;
 
         let url = format!("{}/v2/channels/{}", KICK_API_BASE, username);
         
