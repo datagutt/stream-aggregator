@@ -224,16 +224,19 @@ pub async fn health_check() -> Json<HealthCheckResponse> {
 }
 
 /// GET /platforms - List supported platforms
-pub async fn list_platforms() -> Json<ApiResponse<Vec<PlatformInfo>>> {
-    // TODO: Get this from registered providers
-    let platforms = vec![
-        PlatformInfo {
-            id: "twitch".to_string(),
-            name: "Twitch".to_string(),
-            base_url: "https://twitch.tv".to_string(),
-            supports_discovery: true,
-        },
-    ];
+pub async fn list_platforms(
+    State(state): State<AppState>,
+) -> Json<ApiResponse<Vec<PlatformInfo>>> {
+    let platforms = state
+        .providers
+        .values()
+        .map(|provider| PlatformInfo {
+            id: provider.platform_id().to_string(),
+            name: provider.display_name().to_string(),
+            base_url: provider.base_url().to_string(),
+            supports_discovery: provider.supports_discovery(),
+        })
+        .collect();
 
     Json(ApiResponse::new(platforms))
 }
