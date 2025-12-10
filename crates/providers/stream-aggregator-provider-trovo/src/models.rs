@@ -8,6 +8,14 @@ pub struct TrovoConfig {
     pub client_id: String,
 }
 
+impl Default for TrovoConfig {
+    fn default() -> Self {
+        Self {
+            client_id: String::new(),
+        }
+    }
+}
+
 impl TrovoConfig {
     pub fn new(client_id: impl Into<String>) -> Self {
         Self {
