@@ -179,20 +179,20 @@ pub async fn add_streamer(
         _ => {}
     }
     
+    let provider = state.providers.get(&req.platform).ok_or_else(|| {
+        ApiErrorResponse(ApiError::BadRequest(format!(
+            "Unsupported platform: {}",
+            req.platform
+        )))
+    })?;
+
     let final_user_id = if let Some(username) = req.username {
-        let provider = state.providers.get(&req.platform).ok_or_else(|| {
-            ApiErrorResponse(ApiError::BadRequest(format!(
-                "Unsupported platform: {}",
-                req.platform
-            )))
-        })?;
-        
         provider.resolve_user_id(&username).await?
     } else {
         req.user_id.unwrap()
     };
 
-    let mut streamer = TrackedStreamer::new_manual(req.platform, final_user_id);
+    let mut streamer = TrackedStreamer::new_manual(req.platform.clone(), final_user_id.clone());
     streamer.custom_name = req.custom_name;
     streamer.group = req.group;
     streamer.priority = req.priority;
@@ -201,6 +201,28 @@ pub async fn add_streamer(
     }
 
     state.store.add_tracked_streamer(&streamer).await?;
+
+    // Perform initial data scrape
+    match provider.fetch_stream(&final_user_id).await {
+        Ok(stream_info) => {
+            // Store the initial stream data
+            if let Err(e) = state.store.upsert_stream(&stream_info).await {
+                tracing::warn!(platform = %req.platform, user_id = %final_user_id, "Failed to store initial stream data: {}", e);
+                // Don't fail the request if storing fails, just log
+            }
+        }
+        Err(e) => {
+            // Scrape failed, remove the streamer
+            tracing::warn!(platform = %req.platform, user_id = %final_user_id, "Initial scrape failed, removing streamer: {}", e);
+            if let Err(remove_err) = state.store.remove_tracked_streamer(&req.platform, &final_user_id).await {
+                tracing::error!(platform = %req.platform, user_id = %final_user_id, "Failed to remove streamer after scrape failure: {}", remove_err);
+            }
+            return Err(ApiErrorResponse(ApiError::BadRequest(format!(
+                "Failed to fetch initial stream data: {}", e
+            ))));
+        }
+    }
+
     Ok(Json(ApiResponse::new(streamer)))
 }
 
