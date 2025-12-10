@@ -87,6 +87,12 @@ impl From<StoreError> for ApiErrorResponse {
     }
 }
 
+impl From<ProviderError> for ApiErrorResponse {
+    fn from(err: ProviderError) -> Self {
+        ApiErrorResponse(ApiError::ProviderError(err))
+    }
+}
+
 /// Convert ApiError to HTTP response
 impl IntoResponse for ApiErrorResponse {
     fn into_response(self) -> Response {
@@ -96,6 +102,12 @@ impl IntoResponse for ApiErrorResponse {
                 "STORE_ERROR",
                 e.to_string(),
             ),
+            ApiError::ProviderError(e) => (
+                StatusCode::BAD_GATEWAY,
+                "PROVIDER_ERROR",
+                e.to_string(),
+            ),
+            ApiError::BadRequest(msg) => (StatusCode::BAD_REQUEST, "BAD_REQUEST", msg.clone()),
             ApiError::InvalidRequest(msg) => (StatusCode::BAD_REQUEST, "INVALID_REQUEST", msg.clone()),
             ApiError::Unauthorized => (
                 StatusCode::UNAUTHORIZED,

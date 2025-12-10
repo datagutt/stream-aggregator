@@ -9,7 +9,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tracing::{debug, error};
 
-use stream_aggregator_core::{errors::*, models::*, traits::StreamStore};
+use stream_aggregator_core::{errors::*, models::*, traits::{StreamStore, PlatformProvider}};
 
 use crate::responses::*;
 
@@ -20,6 +20,8 @@ type ApiResult<T> = Result<T, ApiErrorResponse>;
 #[derive(Clone)]
 pub struct AppState {
     pub store: Arc<dyn StreamStore>,
+    /// Provider registry for resolving usernames to IDs
+    pub providers: Arc<HashMap<String, Arc<dyn PlatformProvider>>>,
 }
 
 /// Query parameters for GET /streams
@@ -106,7 +108,8 @@ pub async fn list_streamers(
 #[derive(Debug, Deserialize)]
 pub struct AddStreamerRequest {
     pub platform: String,
-    pub user_id: String,
+    pub user_id: Option<String>,
+    pub username: Option<String>,
     pub custom_name: Option<String>,
     pub group: Option<String>,
     pub priority: Option<i32>,
@@ -117,9 +120,34 @@ pub async fn add_streamer(
     State(state): State<AppState>,
     Json(req): Json<AddStreamerRequest>,
 ) -> ApiResult<Json<ApiResponse<TrackedStreamer>>> {
-    debug!(platform = %req.platform, user_id = %req.user_id, "Adding streamer");
+    match (&req.user_id, &req.username) {
+        (None, None) => {
+            return Err(ApiErrorResponse(ApiError::BadRequest(
+                "Must provide either 'user_id' or 'username'".to_string()
+            )));
+        }
+        (Some(_), Some(_)) => {
+            return Err(ApiErrorResponse(ApiError::BadRequest(
+                "Cannot provide both 'user_id' and 'username'".to_string()
+            )));
+        }
+        _ => {}
+    }
+    
+    let final_user_id = if let Some(username) = req.username {
+        let provider = state.providers.get(&req.platform).ok_or_else(|| {
+            ApiErrorResponse(ApiError::BadRequest(format!(
+                "Unsupported platform: {}",
+                req.platform
+            )))
+        })?;
+        
+        provider.resolve_user_id(&username).await?
+    } else {
+        req.user_id.unwrap()
+    };
 
-    let mut streamer = TrackedStreamer::new_manual(req.platform, req.user_id);
+    let mut streamer = TrackedStreamer::new_manual(req.platform, final_user_id);
     streamer.custom_name = req.custom_name;
     streamer.group = req.group;
     streamer.priority = req.priority;

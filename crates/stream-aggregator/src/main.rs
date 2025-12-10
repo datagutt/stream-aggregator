@@ -129,8 +129,9 @@ async fn main() -> Result<()> {
         AuthConfig::default()
     };
 
-    // Create router
-    let router = create_router_with_auth(store, auth_config);
+    // Create router with providers for username resolution
+    let provider_map = registry.as_map();
+    let router = create_router_with_auth(store, provider_map, auth_config);
 
     // Start server
     let addr = format!("{}:{}", config.server.host, config.server.port);

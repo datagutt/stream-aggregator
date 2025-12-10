@@ -101,6 +101,14 @@ pub enum ApiError {
     #[error("Store error: {0}")]
     StoreError(#[from] StoreError),
 
+    /// Provider error
+    #[error("Provider error: {0}")]
+    ProviderError(#[from] ProviderError),
+
+    /// Bad request
+    #[error("Bad request: {0}")]
+    BadRequest(String),
+
     /// Invalid request
     #[error("Invalid request: {0}")]
     InvalidRequest(String),

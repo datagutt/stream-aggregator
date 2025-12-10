@@ -49,15 +49,14 @@ impl TwitchProvider {
         Ok(headers)
     }
 
-    /// Fetch user information by user ID or login
-    async fn fetch_user(&self, user_id: &str) -> Result<Option<stream_aggregator_core::models::StreamInfo>, ProviderError> {
+    /// Resolve a username (login) to a user ID
+    pub async fn resolve_username_to_user_id(&self, username: &str) -> Result<String, ProviderError> {
         let headers = self.auth_headers().await?;
 
         let url = format!("{}/users", HELIX_API_BASE);
         let mut request = self.client.get(&url);
 
-        // Try both id and login parameters
-        request = request.query(&[("login", user_id)]);
+        request = request.query(&[("login", username)]);
 
         for (key, value) in headers {
             request = request.header(key, value);
@@ -66,10 +65,6 @@ impl TwitchProvider {
         let response = request.send().await.map_err(|e| {
             ProviderError::HttpError(format!("Failed to fetch Twitch user: {}", e))
         })?;
-
-        if response.status().as_u16() == 404 {
-            return Ok(None);
-        }
 
         if !response.status().is_success() {
             let status = response.status();
@@ -85,16 +80,13 @@ impl TwitchProvider {
         })?;
 
         if users_response.data.is_empty() {
-            return Ok(None);
+            return Err(ProviderError::StreamerNotFound(username.to_string()));
         }
 
-        let user = &users_response.data[0];
-
-        // Now check if they're live
-        let stream_info = self.fetch_stream_by_user_id(&user.id).await?;
-
-        Ok(Some(stream_info))
+        Ok(users_response.data[0].id.clone())
     }
+
+
 
     /// Fetch stream information by user ID
     async fn fetch_stream_by_user_id(&self, user_id: &str) -> Result<StreamInfo, ProviderError> {
@@ -183,36 +175,30 @@ impl PlatformProvider for TwitchProvider {
         "https://twitch.tv"
     }
 
-    async fn fetch_stream(&self, streamer_id: &str) -> Result<StreamInfo, ProviderError> {
-        debug!(streamer_id, "Fetching Twitch stream");
-
-        // Try to fetch by login/username first
-        if let Some(stream_info) = self.fetch_user(streamer_id).await? {
-            return Ok(stream_info);
+    async fn resolve_user_id(&self, username_or_id: &str) -> Result<String, ProviderError> {
+        if username_or_id.chars().all(|c| c.is_ascii_digit()) {
+            return Ok(username_or_id.to_string());
         }
-
-        // If not found, try as user ID
-        match self.fetch_stream_by_user_id(streamer_id).await {
-            Ok(info) => Ok(info),
-            Err(ProviderError::StreamerNotFound(_)) => {
-                Err(ProviderError::StreamerNotFound(streamer_id.to_string()))
-            }
-            Err(e) => Err(e),
-        }
+        
+        self.resolve_username_to_user_id(username_or_id).await
     }
 
-    async fn fetch_streams_batch(&self, streamer_ids: &[String]) -> Vec<Result<StreamInfo, ProviderError>> {
-        if streamer_ids.is_empty() {
+    async fn fetch_stream(&self, user_id: &str) -> Result<StreamInfo, ProviderError> {
+        self.fetch_stream_by_user_id(user_id).await
+    }
+
+    async fn fetch_streams_batch(&self, user_ids: &[String]) -> Vec<Result<StreamInfo, ProviderError>> {
+        if user_ids.is_empty() {
             return Vec::new();
         }
 
-        debug!(count = streamer_ids.len(), "Batch fetching Twitch streams");
+        debug!(count = user_ids.len(), "Batch fetching Twitch streams");
 
-        // Twitch supports up to 100 user logins per request
+        // Twitch supports up to 100 user IDs per request
         let chunk_size = 100;
-        let mut results = Vec::with_capacity(streamer_ids.len());
+        let mut results = Vec::with_capacity(user_ids.len());
 
-        for chunk in streamer_ids.chunks(chunk_size) {
+        for chunk in user_ids.chunks(chunk_size) {
             let headers = match self.auth_headers().await {
                 Ok(h) => h,
                 Err(e) => {
@@ -224,12 +210,12 @@ impl PlatformProvider for TwitchProvider {
                 }
             };
 
-            // Build query string with multiple login parameters
+            // Build query string with multiple user ID parameters
             let url = format!("{}/users", HELIX_API_BASE);
             let mut request = self.client.get(&url);
 
-            for login in chunk {
-                request = request.query(&[("login", login)]);
+            for user_id in chunk {
+                request = request.query(&[("id", user_id)]);
             }
 
             for (key, value) in &headers {
@@ -262,18 +248,18 @@ impl PlatformProvider for TwitchProvider {
             let user_map: HashMap<_, _> = users
                 .data
                 .into_iter()
-                .map(|u| (u.login.to_lowercase(), u))
+                .map(|u| (u.id.clone(), u))
                 .collect();
 
             // Fetch stream status for all found users
-            for login in chunk {
-                if let Some(user) = user_map.get(&login.to_lowercase()) {
+            for user_id in chunk {
+                if let Some(user) = user_map.get(user_id) {
                     match self.fetch_stream_by_user_id(&user.id).await {
                         Ok(info) => results.push(Ok(info)),
                         Err(e) => results.push(Err(e)),
                     }
                 } else {
-                    results.push(Err(ProviderError::StreamerNotFound(login.to_string())));
+                    results.push(Err(ProviderError::StreamerNotFound(user_id.to_string())));
                 }
             }
         }

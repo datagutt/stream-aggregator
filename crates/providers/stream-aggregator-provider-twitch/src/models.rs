@@ -93,7 +93,7 @@ pub struct TwitchStream {
 }
 
 /// User data from Twitch Helix API
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct TwitchUser {
     pub id: String,
     pub login: String,

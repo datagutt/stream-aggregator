@@ -1,6 +1,7 @@
 //! Provider registry and initialization
 
 use anyhow::Result;
+use std::collections::HashMap;
 use std::sync::Arc;
 use tracing::{info, warn};
 
@@ -70,6 +71,14 @@ impl ProviderRegistry {
     /// Check if registry is empty
     pub fn is_empty(&self) -> bool {
         self.providers.is_empty()
+    }
+
+    /// Get providers as a HashMap for quick platform_id lookups
+    pub fn as_map(&self) -> HashMap<String, Arc<dyn PlatformProvider>> {
+        self.providers
+            .iter()
+            .map(|p| (p.platform_id().to_string(), Arc::clone(p)))
+            .collect()
     }
 
     // ===== Individual Provider Registration Methods =====

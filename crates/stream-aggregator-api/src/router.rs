@@ -5,23 +5,34 @@ use axum::{
     routing::{delete, get, post},
     Router,
 };
+use std::collections::HashMap;
 use std::sync::Arc;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 
-use stream_aggregator_core::traits::StreamStore;
+use stream_aggregator_core::traits::{StreamStore, PlatformProvider};
 
 use crate::handlers::*;
 use crate::middleware::{auth_middleware, AuthConfig};
 
 /// Create the main API router
-pub fn create_router(store: Arc<dyn StreamStore>) -> Router {
-    create_router_with_auth(store, AuthConfig::default())
+pub fn create_router(
+    store: Arc<dyn StreamStore>,
+    providers: HashMap<String, Arc<dyn PlatformProvider>>,
+) -> Router {
+    create_router_with_auth(store, providers, AuthConfig::default())
 }
 
 /// Create the main API router with authentication
-pub fn create_router_with_auth(store: Arc<dyn StreamStore>, auth_config: AuthConfig) -> Router {
-    let state = AppState { store };
+pub fn create_router_with_auth(
+    store: Arc<dyn StreamStore>,
+    providers: HashMap<String, Arc<dyn PlatformProvider>>,
+    auth_config: AuthConfig,
+) -> Router {
+    let state = AppState {
+        store,
+        providers: Arc::new(providers),
+    };
 
     Router::new()
         // Health check (always public)

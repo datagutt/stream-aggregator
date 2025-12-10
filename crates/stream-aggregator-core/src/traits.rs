@@ -20,29 +20,18 @@ pub trait PlatformProvider: Send + Sync + 'static {
     /// Base URL for the platform (e.g., "https://twitch.tv")
     fn base_url(&self) -> &'static str;
 
-    /// Fetch stream information for a specific streamer
-    ///
-    /// # Arguments
-    /// * `streamer_id` - Platform-specific user ID or username
-    ///
-    /// # Returns
-    /// * `Ok(StreamInfo)` - Stream information (may have is_live=false if offline)
-    /// * `Err(ProviderError)` - If the request fails or streamer doesn't exist
-    async fn fetch_stream(&self, streamer_id: &str) -> Result<StreamInfo, ProviderError>;
+    /// Resolve a username/login to a user ID
+    async fn resolve_user_id(&self, username_or_id: &str) -> Result<String, ProviderError> {
+        Ok(username_or_id.to_string())
+    }
 
-    /// Batch fetch multiple streamers (optimization)
-    ///
-    /// Default implementation calls `fetch_stream` for each ID sequentially.
-    /// Providers that support batch requests should override this.
-    ///
-    /// # Arguments
-    /// * `streamer_ids` - List of platform-specific user IDs or usernames
-    ///
-    /// # Returns
-    /// * Vector of results (one per input ID, in the same order)
-    async fn fetch_streams_batch(&self, streamer_ids: &[String]) -> Vec<Result<StreamInfo, ProviderError>> {
-        let mut results = Vec::with_capacity(streamer_ids.len());
-        for id in streamer_ids {
+    /// Fetch stream information for a user
+    async fn fetch_stream(&self, user_id: &str) -> Result<StreamInfo, ProviderError>;
+
+    /// Batch fetch multiple users
+    async fn fetch_streams_batch(&self, user_ids: &[String]) -> Vec<Result<StreamInfo, ProviderError>> {
+        let mut results = Vec::with_capacity(user_ids.len());
+        for id in user_ids {
             results.push(self.fetch_stream(id).await);
         }
         results
