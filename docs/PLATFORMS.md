@@ -234,29 +234,31 @@ fn rate_limit_config(&self) -> RateLimitConfig {
 **Crate**: `stream-aggregator-provider-youtube`
 
 #### Features
-- HTML scraping (no API key required)
-- Fallback to Data API v3 if configured
-- Support for channel IDs and handles
+- **Pure HTML scraping only** (no API key, no official API)
+- Regex-based parsing matching lsnd implementation exactly
+- Support for channel IDs
+
+#### API Endpoints
+- `GET https://www.youtube.com/channel/{id}` - Channel page for metadata
+- `GET https://www.youtube.com/channel/{id}/live` - Live stream page
 
 #### Implementation Notes
+Uses pure regex pattern matching to extract data from HTML, matching the lsnd implementation exactly:
+
 ```rust
 pub struct YouTubeProvider {
     client: reqwest::Client,
-    /// Optional API key for Data API v3
-    api_key: Option<String>,
-    /// Cache for channel metadata
-    channel_cache: Arc<RwLock<HashMap<String, CachedChannel>>>,
 }
 
 impl YouTubeProvider {
-    async fn fetch_via_scraping(&self, channel_id: &str) -> Result<StreamInfo, ProviderError> {
-        // Fetch channel page for metadata
+    async fn fetch_stream(&self, channel_id: &str) -> Result<StreamInfo, ProviderError> {
+        // Fetch channel page for metadata (name, avatar)
         let channel_url = format!("https://www.youtube.com/channel/{}", channel_id);
         let channel_html = self.client.get(&channel_url).send().await?.text().await?;
         
         let (name, avatar) = self.parse_channel_metadata(&channel_html)?;
         
-        // Fetch live page
+        // Fetch live page to check live status
         let live_url = format!("https://www.youtube.com/channel/{}/live", channel_id);
         let live_html = self.client.get(&live_url).send().await?.text().await?;
         
@@ -270,49 +272,44 @@ impl YouTubeProvider {
             is_live: live_info.is_live,
             title: live_info.title,
             viewer_count: live_info.viewers,
-            // ...
+            last_updated: Utc::now(),
         })
     }
     
     fn parse_channel_metadata(&self, html: &str) -> Result<(String, String), ProviderError> {
-        // Use regex or scraper crate for parsing
-        // More robust than the original JS implementation
-        let document = scraper::Html::parse_document(html);
+        // Use regex patterns matching lsnd/scrapers/youtube.js
+        let name_regex = Regex::new(r#""name"\s*:\s*"([^"]+)""#)?;
+        let avatar_regex = Regex::new(r#""avatar"\s*:\s*\{\s*"thumbnails"\s*:\s*\[\s*\{\s*"url"\s*:\s*"([^"]+)""#)?;
         
-        // Try multiple selectors for resilience
-        let name = self.extract_json_ld_name(&document)
-            .or_else(|| self.extract_meta_name(&document))
-            .or_else(|| self.extract_title_name(&document))
+        let name = name_regex.captures(html)
+            .and_then(|c| c.get(1))
+            .map(|m| m.as_str().to_string())
             .ok_or(ProviderError::ParseError("Could not find channel name"))?;
             
-        // Similar for avatar
-        // ...
+        let avatar = avatar_regex.captures(html)
+            .and_then(|c| c.get(1))
+            .map(|m| m.as_str().to_string())
+            .ok_or(ProviderError::ParseError("Could not find avatar"))?;
+            
+        Ok((name, avatar))
+    }
+    
+    fn parse_live_status(&self, html: &str) -> Result<LiveInfo, ProviderError> {
+        // Check if actually streaming using regex patterns
+        let is_live = html.contains("isLiveContent\":true");
+        
+        // Extract title and viewer count if live
+        // ... regex patterns matching lsnd implementation
+        
+        Ok(LiveInfo { is_live, title, viewers })
     }
 }
 ```
 
-#### Discovery
-YouTube doesn't have a public API for discovering live streams by tags. Options:
-1. **Not supported**: Mark discovery as unavailable
-2. **Search API**: Use YouTube Data API v3 search (requires API key, limited quota)
-3. **RSS feeds**: Monitor channel RSS feeds for live status
-
-```rust
-fn supports_discovery(&self) -> bool {
-    self.api_key.is_some()
-}
-
-fn discovery_capabilities(&self) -> DiscoveryCapabilities {
-    DiscoveryCapabilities {
-        supports_tags: false,
-        supports_categories: true,  // Can search by gaming category
-        supports_languages: false,
-        supports_viewer_count_filter: false,
-        supports_title_search: true,
-        max_results_per_query: Some(50),
-    }
-}
-```
+#### Notes
+- **No official API support** - only HTML scraping per user requirement
+- **No discovery support** - YouTube doesn't expose public discovery endpoints without API
+- Parsing patterns match lsnd/scrapers/youtube.js exactly
 
 ---
 
@@ -324,13 +321,31 @@ fn discovery_capabilities(&self) -> DiscoveryCapabilities {
 - **JA3/JA4 TLS fingerprint spoofing** via `wreq` (required for Cloudflare bypass)
 - Browser emulation presets via `wreq-util`
 - XSRF token handling
-- Category-based discovery
+- REST API v2
+
+#### API Endpoint
+- `GET /api/v2/channels/{username}` - Returns channel and livestream info
 
 #### Why wreq is Required
 
 Kick uses Cloudflare's anti-bot protection which detects non-browser TLS fingerprints.
 Standard HTTP clients like `reqwest` will be blocked. We use [`wreq`](https://github.com/0x676e67/wreq),
 a fork of reqwest with full JA3/JA4/HTTP2 fingerprint emulation capabilities.
+
+#### Response Structure
+```json
+{
+  "user": {
+    "username": "string",
+    "profile_pic": "string"
+  },
+  "livestream": {
+    "is_live": boolean,
+    "session_title": "string",
+    "viewer_count": number
+  }
+}
+```
 
 #### Implementation Notes
 ```rust
@@ -637,6 +652,10 @@ prost-build = "0.12"
 - GraphQL API
 - Simple authentication-free access
 
+#### API Endpoint
+- `POST https://graphigo.prd.dlive.tv/` - GraphQL endpoint
+
+#### Implementation Notes
 ```rust
 pub struct DLiveProvider {
     client: reqwest::Client,
@@ -694,8 +713,18 @@ impl DLiveProvider {
 #### Features
 - Official API with Client ID authentication
 - Two-step lookup (username -> channel_id -> channel data)
-- Discovery support via API
+- Rate limit: 120 requests/minute
 
+#### API Endpoints
+1. `POST /openplatform/getusers` - Get channel_id from username
+   - Body: `{"user": ["username"]}`
+   - Returns: `{"users": [{"channel_id": "...", "username": "...", ...}]}`
+
+2. `POST /openplatform/channels/id` - Get channel data by channel_id
+   - Body: `{"channel_id": "..."}`
+   - Returns: Channel info with `is_live`, `live_title`, `current_viewers`, etc.
+
+#### Implementation Notes
 ```rust
 pub struct TrovoProvider {
     client: reqwest::Client,
@@ -728,17 +757,157 @@ impl TrovoProvider {
         
         Ok(channel_id)
     }
+    
+    async fn fetch_channel_by_id(&self, channel_id: &str) -> Result<ChannelData, ProviderError> {
+        let response = self.client
+            .post("https://open-api.trovo.live/openplatform/channels/id")
+            .header("Client-ID", &self.client_id)
+            .json(&serde_json::json!({ "channel_id": channel_id }))
+            .send()
+            .await?;
+            
+        response.json().await.map_err(Into::into)
+    }
 }
 ```
 
 ---
 
-### 7-9. Other Providers
+### 7. Guac Provider
 
-Similar patterns for:
-- **Guac** (`stream-aggregator-provider-guac`): Simple REST API
-- **AngelThump** (`stream-aggregator-provider-angelthump`): Two-endpoint lookup (streams + users)
-- **RobotStreamer** (`stream-aggregator-provider-robotstreamer`): Simple REST API (note: HTTP only, not HTTPS)
+**Crate**: `stream-aggregator-provider-guac`
+
+#### API Endpoint
+- `GET https://api.guac.tv/v2/stream/{id}` - Get stream info
+
+#### Response Structure
+```json
+{
+  "data": {
+    "live": boolean,
+    "user": {
+      "username": "string",
+      "avatar": "string"
+    },
+    "type": "string",
+    "viewers": number,
+    "title": "string",
+    "banner": "string"
+  }
+}
+```
+
+#### Implementation Notes
+```rust
+impl GuacProvider {
+    async fn fetch_stream(&self, user_id: &str) -> Result<StreamInfo, ProviderError> {
+        let url = format!("https://api.guac.tv/v2/stream/{}", user_id);
+        let response: GuacResponse = self.client.get(&url).send().await?.json().await?;
+        
+        // Response has nested data.data structure
+        let stream = response.data;
+        
+        Ok(StreamInfo {
+            platform: "guac".to_string(),
+            user_id: user_id.to_string(),
+            display_name: stream.user.username,
+            avatar_url: stream.user.avatar,
+            is_live: stream.live,
+            title: stream.title,
+            viewer_count: stream.viewers,
+            thumbnail_url: stream.banner,
+            last_updated: Utc::now(),
+        })
+    }
+}
+```
+
+### 8. AngelThump Provider
+
+**Crate**: `stream-aggregator-provider-angelthump`
+
+#### API Endpoints
+- `GET https://api.angelthump.com/v3/users/?username={username}` - Get user info (returns array)
+- `GET https://api.angelthump.com/v3/streams/?username={username}` - Get stream info (returns array)
+
+#### Implementation Notes
+```rust
+impl AngelThumpProvider {
+    async fn fetch_user(&self, username: &str) -> Result<AngelThumpUser, ProviderError> {
+        let url = format!("https://api.angelthump.com/v3/users/?username={}", username);
+        
+        // API returns array, take first element
+        let users: Vec<AngelThumpUser> = self.client.get(&url).send().await?.json().await?;
+        users.into_iter().next()
+            .ok_or_else(|| ProviderError::StreamerNotFound(username.to_string()))
+    }
+    
+    async fn fetch_stream_info(&self, username: &str) -> Result<Option<AngelThumpStream>, ProviderError> {
+        let url = format!("https://api.angelthump.com/v3/streams/?username={}", username);
+        
+        // API returns array, empty if offline
+        let streams: Vec<AngelThumpStream> = self.client.get(&url).send().await?.json().await?;
+        Ok(streams.into_iter().next())
+    }
+}
+```
+
+#### Notes
+Both endpoints use query parameters and return arrays. Stream endpoint returns empty array if offline.
+
+### 9. RobotStreamer Provider
+
+**Crate**: `stream-aggregator-provider-robotstreamer`
+
+#### API Endpoint
+- `GET http://api.robotstreamer.com:8080/v1/get_robot/{id}` - Get robot info (returns array)
+
+#### Response Structure
+```json
+[{
+  "status": "live" | "offline",
+  "robot_name": "string",
+  "viewers": number
+}]
+```
+
+#### Implementation Notes
+```rust
+impl RobotStreamerProvider {
+    async fn fetch_robot(&self, robot_id: &str) -> Result<RobotStreamerRobot, ProviderError> {
+        // Note: HTTP only (not HTTPS) on port 8080
+        let url = format!("http://api.robotstreamer.com:8080/v1/get_robot/{}", robot_id);
+        
+        // API returns array, take first element
+        let robots: Vec<RobotStreamerRobot> = self.client.get(&url).send().await?.json().await?;
+        robots.into_iter().next()
+            .ok_or_else(|| ProviderError::StreamerNotFound(robot_id.to_string()))
+    }
+    
+    async fn fetch_stream(&self, user_id: &str) -> Result<StreamInfo, ProviderError> {
+        let robot = self.fetch_robot(user_id).await?;
+        
+        // Status field indicates if live
+        let is_live = robot.status.as_ref()
+            .map(|s| s.to_lowercase() == "live" || s == "1")
+            .unwrap_or(false);
+            
+        Ok(StreamInfo {
+            platform: "robotstreamer".to_string(),
+            user_id: user_id.to_string(),
+            display_name: robot.robot_name.unwrap_or(user_id.to_string()),
+            is_live,
+            viewer_count: robot.viewers,
+            last_updated: Utc::now(),
+        })
+    }
+}
+```
+
+#### Notes
+- Uses **HTTP only** (not HTTPS) on port 8080
+- API returns an array with single element
+- Status field checked for "live" string or "1"
 
 > **Note:** Brime has been removed as the platform is no longer active.
 
