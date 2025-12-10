@@ -1,0 +1,14 @@
+[package]
+name = "stream-aggregator-provider-youtube"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+stream-aggregator-core = { path = "../../stream-aggregator-core" }
+async-trait = "0.1"
+wreq = "0.2"
+thiserror = "2.0"
+tracing = "0.1"
+regex = "1.11"
+chrono = "0.4"
+tokio = { version = "1", features = ["time"] }
