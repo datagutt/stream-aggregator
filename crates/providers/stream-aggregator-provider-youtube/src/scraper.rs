@@ -46,7 +46,7 @@ impl YouTubeProvider {
 
     fn name_regex() -> &'static Regex {
         NAME_REGEX.get_or_init(|| {
-            Regex::new(r#"(?s)channelMetadataRenderer.*?title".*?"(.*?)""#).unwrap()
+            Regex::new(r#"metadata.*?(?s)channelMetadataRenderer.*?title".*?"(.*?)""#).unwrap()
         })
     }
 
