@@ -2423,6 +2423,7 @@ dependencies = [
  "stream-aggregator-provider-guac",
  "stream-aggregator-provider-kick",
  "stream-aggregator-provider-robotstreamer",
+ "stream-aggregator-provider-tiktok",
  "stream-aggregator-provider-trovo",
  "stream-aggregator-provider-twitch",
  "stream-aggregator-provider-youtube",
@@ -2551,6 +2552,20 @@ dependencies = [
  "thiserror 2.0.17",
  "tracing",
  "wreq",
+]
+
+[[package]]
+name = "stream-aggregator-provider-tiktok"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "serde",
+ "serde_json",
+ "stream-aggregator-core",
+ "thiserror 2.0.17",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]

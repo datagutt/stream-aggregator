@@ -134,6 +134,9 @@ pub struct ProvidersConfig {
 	
 	#[serde(default)]
 	pub robotstreamer: RobotStreamerProviderConfig,
+	
+	#[serde(default)]
+	pub tiktok: TikTokProviderConfig,
 }
 
 /// Twitch provider configuration
@@ -203,6 +206,25 @@ pub struct RobotStreamerProviderConfig {
 	pub enabled: bool,
 }
 
+/// TikTok provider configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TikTokProviderConfig {
+	#[serde(default = "default_true")]
+	pub enabled: bool,
+	pub node_path: Option<String>,
+	pub bridge_path: Option<String>,
+}
+
+impl Default for TikTokProviderConfig {
+	fn default() -> Self {
+		Self {
+			enabled: true,
+			node_path: None,
+			bridge_path: None,
+		}
+	}
+}
+
 fn default_true() -> bool {
 	true
 }
@@ -254,6 +276,7 @@ impl AppConfig {
                 guac: GuacProviderConfig::default(),
                 angelthump: AngelThumpProviderConfig::default(),
                 robotstreamer: RobotStreamerProviderConfig::default(),
+                tiktok: TikTokProviderConfig::default(),
             },
             store: StoreConfig {
                 backend: store_backend,

@@ -19,6 +19,7 @@ default = [
 	"provider-guac",
 	"provider-angelthump",
 	"provider-robotstreamer",
+	"provider-tiktok",
 	"memory-store",
 ]
 provider-twitch = ["stream-aggregator-provider-twitch"]
@@ -29,6 +30,7 @@ provider-trovo = ["stream-aggregator-provider-trovo"]
 provider-guac = ["stream-aggregator-provider-guac"]
 provider-angelthump = ["stream-aggregator-provider-angelthump"]
 provider-robotstreamer = ["stream-aggregator-provider-robotstreamer"]
+provider-tiktok = ["stream-aggregator-provider-tiktok"]
 memory-store = ["stream-aggregator-store/memory"]
 sqlite-store = ["stream-aggregator-store/sqlite"]
 all-stores = ["memory-store", "sqlite-store"]
@@ -49,6 +51,7 @@ stream-aggregator-provider-trovo = { path = "../providers/stream-aggregator-prov
 stream-aggregator-provider-guac = { path = "../providers/stream-aggregator-provider-guac", optional = true }
 stream-aggregator-provider-angelthump = { path = "../providers/stream-aggregator-provider-angelthump", optional = true }
 stream-aggregator-provider-robotstreamer = { path = "../providers/stream-aggregator-provider-robotstreamer", optional = true }
+stream-aggregator-provider-tiktok = { path = "../providers/stream-aggregator-provider-tiktok", optional = true }
 
 # Runtime & config
 tokio = { workspace = true }

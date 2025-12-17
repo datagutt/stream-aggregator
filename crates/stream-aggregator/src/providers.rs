@@ -33,6 +33,9 @@ use stream_aggregator_provider_angelthump::{AngelThumpConfig, AngelThumpProvider
 #[cfg(feature = "provider-robotstreamer")]
 use stream_aggregator_provider_robotstreamer::{RobotStreamerConfig, RobotStreamerProvider};
 
+#[cfg(feature = "provider-tiktok")]
+use stream_aggregator_provider_tiktok::{TikTokConfig, TikTokProvider};
+
 macro_rules! register_providers {
 	($registry:expr, $config:expr, [
 		$(
@@ -183,6 +186,20 @@ impl ProviderRegistry {
 				init: |_cfg: crate::config::RobotStreamerProviderConfig| async {
 					let robotstreamer_config = RobotStreamerConfig::default();
 					Ok::<RobotStreamerProvider, anyhow::Error>(RobotStreamerProvider::new(robotstreamer_config))
+				}
+			},
+			{
+				feature: "provider-tiktok",
+				provider: TikTokProvider,
+				config_type: crate::config::TikTokProviderConfig,
+				config_field: tiktok,
+				name: "TikTok",
+				init: |cfg: crate::config::TikTokProviderConfig| async {
+					let tiktok_config = TikTokConfig {
+						node_path: cfg.node_path,
+						bridge_path: cfg.bridge_path,
+					};
+					Ok::<TikTokProvider, anyhow::Error>(TikTokProvider::new(tiktok_config))
 				}
 			},
 		]);
