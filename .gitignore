@@ -17,3 +17,6 @@ target/
 #.idea/
 streams.db
 config.toml
+
+# Since we can't escape Javascript without reimplementing a lot of packages
+node_modules/
