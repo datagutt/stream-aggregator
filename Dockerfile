@@ -16,10 +16,12 @@ FROM rust:1.92-trixie AS builder
 
 WORKDIR /app
 
-# Install build dependencies
+# Install build dependencies (including cmake for boring-sys/wreq)
 RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
+    cmake \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy workspace files
@@ -80,6 +82,8 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
+    cmake \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 COPY Cargo.toml Cargo.lock ./
