@@ -20,3 +20,4 @@ config.toml
 
 # Since we can't escape Javascript without reimplementing a lot of packages
 node_modules/
+stream_aggregator.db
