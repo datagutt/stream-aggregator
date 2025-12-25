@@ -26,11 +26,8 @@ RUN apt-get update && apt-get install -y \
 COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates
 
-# Remove worker crate (requires wasm target, not needed for Docker)
-RUN rm -rf crates/stream-aggregator-worker
-
 # Build release binary with SQLite support
-RUN cargo build --release --package stream-aggregator --features sqlite
+RUN cargo build --release --package stream-aggregator --features sqlite--store
 
 # ============================================================================
 # Stage 2: Runtime
@@ -87,10 +84,9 @@ RUN apt-get update && apt-get install -y \
 
 COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates
-RUN rm -rf crates/stream-aggregator-worker
 
 # Build with libSQL support instead of SQLite
-RUN cargo build --release --package stream-aggregator --features libsql
+RUN cargo build --release --package stream-aggregator --features sqlite-store
 
 # ============================================================================
 # Runtime for libSQL version
