@@ -10,7 +10,9 @@ class TikTokBridge {
 
     async getRoomInfo(username) {
         try {
-            const tiktokConnection = new TikTokLiveConnection(username);
+            const tiktokConnection = new TikTokLiveConnection(username, {
+                connectWithUniqueId: true
+            });
             
             let roomInfo = null;
             try {
