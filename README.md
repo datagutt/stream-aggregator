@@ -1,19 +1,21 @@
 # StreamAggregator
 
-**StreamAggregator** is a high-performance, extensible service for aggregating live stream information across multiple platforms.
+High-performance Rust service for aggregating live stream information across multiple platforms.
 
-- **Platform-agnostic**: Support any streaming platform through a plugin system
-- **Flexible discovery**: Support both manual streamer lists AND automatic discovery (tags, categories, games)
-- **Multi-tenant ready**: Run multiple independent configurations simultaneously
-- **Horizontally scalable**: Distribute scraping workloads across multiple instances
-- **Observable**: Built-in metrics, tracing, and health checks
+> Rewrite of the [original Node.js implementation](https://github.com/livestreamnorge/lsnd) with improved performance and type safety.
+
+## Features
+
+- **Multi-platform**: Twitch, YouTube, Kick, DLive, Trovo, TikTok, and more
+- **Fast**: Rust with async/await and efficient scraping  
+- **Persistent**: SQLite with Diesel ORM
+- **Production-ready**: Docker images for amd64/arm64
 
 ## Quick Start
 
-### Docker (Recommended)
+### Docker (5 Minutes)
 
 ```bash
-# Pull and run pre-built image
 docker run -d \
   --name stream-aggregator \
   -p 8080:8080 \
@@ -21,41 +23,207 @@ docker run -d \
   -e TWITCH_CLIENT_ID=your_id \
   -e TWITCH_CLIENT_SECRET=your_secret \
   ghcr.io/datagutt/stream-aggregator:latest
-
-# Or use docker-compose (see QUICKSTART-DOCKER.md)
 ```
+
+**Or with docker-compose:**
+
+```yaml
+services:
+  stream-aggregator:
+    image: ghcr.io/datagutt/stream-aggregator:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - stream-data:/data
+    environment:
+      - DATABASE_URL=/data/streams.db
+      - TWITCH_CLIENT_ID=${TWITCH_CLIENT_ID}
+      - TWITCH_CLIENT_SECRET=${TWITCH_CLIENT_SECRET}
+    restart: unless-stopped
+
+volumes:
+  stream-data:
+```
+
+**Get Twitch credentials:** https://dev.twitch.tv/console/apps
 
 ### From Source
 
 ```bash
-# Clone and build
 git clone https://github.com/datagutt/stream-aggregator.git
 cd stream-aggregator
 cargo build --release
-
-# Run
 ./target/release/stream-aggregator
 ```
 
-## Documentation
+## Usage
 
-- [QUICKSTART.md](./QUICKSTART.md) - Build and run from source
-- [QUICKSTART-DOCKER.md](./QUICKSTART-DOCKER.md) - Docker deployment guide
-- [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) - Production deployment (Docker, Coolify, Fly.io)
-- [docs/API.md](./docs/API.md) - REST API documentation
-- [docs/CONFIGURATION.md](./docs/CONFIGURATION.md) - Configuration options
+### Track a Streamer
 
-## Docker Images
+```bash
+curl -X POST http://localhost:8080/api/v1/streamers \
+  -H "Content-Type: application/json" \
+  -d '{"platform": "twitch", "username": "ninja"}'
+```
 
-Pre-built multi-platform images (linux/amd64, linux/arm64) are available on GitHub Container Registry:
+### Get Live Streams
+
+```bash
+# All streams
+curl http://localhost:8080/api/v1/streams
+
+# By platform
+curl http://localhost:8080/api/v1/streams?platform=twitch
+
+# Health check
+curl http://localhost:8080/health
+```
+
+## Supported Platforms
+
+| Platform | Auth Required | Notes |
+|----------|---------------|-------|
+| Twitch | Yes (OAuth) | https://dev.twitch.tv/console/apps |
+| YouTube | No | HTML scraping |
+| Kick | No | Browser emulation (Cloudflare bypass) |
+| DLive | No | GraphQL API |
+| Trovo | Optional | REST API |
+| TikTok | No | WebSocket bridge (requires Node.js) |
+| Guac | No | REST API |
+| AngelThump | No | REST API |
+| RobotStreamer | No | REST API |
+
+## Configuration
+
+### Environment Variables (.env file)
+
+```bash
+HOST=0.0.0.0
+PORT=8080
+DATABASE_URL=/data/streams.db
+TWITCH_CLIENT_ID=your_id
+TWITCH_CLIENT_SECRET=your_secret
+SCRAPE_INTERVAL_SECS=300
+API_KEYS=secret-key  # Optional: Enable authentication
+```
+
+### Configuration File (config.toml)
+
+```toml
+[server]
+host = "0.0.0.0"
+port = 8080
+
+[scheduler]
+interval_secs = 300  # Scrape every 5 minutes
+max_concurrent = 10
+
+[store]
+backend = "diesel"
+database_url = "stream_aggregator.db"
+
+[providers.twitch]
+enabled = true
+client_id = "your_id"
+client_secret = "your_secret"
+
+[providers.youtube]
+enabled = true
+```
+
+See `config.example.toml` for all options.
+
+## Deployment
+
+### Docker Images (GitHub Container Registry)
 
 ```bash
 # Latest stable
-docker pull ghcr.io/datagutt/stream-aggregator:latest
+ghcr.io/datagutt/stream-aggregator:latest
 
 # Specific version
-docker pull ghcr.io/datagutt/stream-aggregator:v1.0.0
+ghcr.io/datagutt/stream-aggregator:v1.0.0
 
-# Development builds
-docker pull ghcr.io/datagutt/stream-aggregator:develop
+# Development
+ghcr.io/datagutt/stream-aggregator:develop
 ```
+
+Multi-platform: linux/amd64, linux/arm64
+
+### Platforms
+
+- **Coolify** - Self-hosted PaaS with UI
+- **Fly.io** - Global edge deployment  
+- **Docker Compose** - Self-hosted
+- **Railway / Render** - Managed platforms
+
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for full guides.
+
+## API
+
+### Endpoints
+
+```
+GET  /health                    Health check
+GET  /api/v1/platforms          List platforms
+GET  /api/v1/streams            Get all streams
+GET  /api/v1/streams?platform=X Filter by platform
+GET  /api/v1/streamers          List tracked streamers
+POST /api/v1/streamers          Add streamer
+DELETE /api/v1/streamers/:id    Remove streamer
+```
+
+### Authentication (Optional)
+
+```bash
+# Enable with environment variable
+API_KEYS=secret-key-1,secret-key-2
+
+# Use in requests
+curl -H "X-API-Key: secret-key-1" http://localhost:8080/api/v1/streamers
+```
+
+See [docs/API.md](docs/API.md) for complete API documentation.
+
+## Documentation
+
+- **[API.md](docs/API.md)** - Complete REST API reference
+- **[CONFIGURATION.md](docs/CONFIGURATION.md)** - All configuration options
+- **[DEPLOYMENT.md](docs/DEPLOYMENT.md)** - Production deployment guides
+- **[DEVELOPMENT.md](docs/DEVELOPMENT.md)** - Architecture and contributing
+
+## Development
+
+```bash
+cargo build              # Build
+cargo test               # Run tests
+cargo fmt                # Format code
+cargo clippy             # Lint
+RUST_LOG=debug cargo run # Run with debug logging
+```
+
+See [AGENTS.md](AGENTS.md) for build commands and [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for architecture.
+
+## Migrating from Node.js
+
+API-compatible with the [original implementation](https://github.com/livestreamnorge/lsnd). Simply point your integrations to the new deployment URL.
+
+**Benefits:**
+- 10-20x faster scraping
+- Lower memory (~50MB vs ~200MB)
+- Type safety and reliability
+- Persistent storage
+
+## License
+
+GNU Affero General Public License v3.0 - see [LICENSE](LICENSE)
+
+## Credits
+
+- Original: [livestreamnorge/lsnd](https://github.com/livestreamnorge/lsnd)
+- Maintainer: [@datagutt](https://github.com/datagutt)
+
+## Support
+
+- [GitHub Issues](https://github.com/datagutt/stream-aggregator/issues)
+- [GitHub Discussions](https://github.com/datagutt/stream-aggregator/discussions)

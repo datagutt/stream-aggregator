@@ -49,7 +49,7 @@ ghcr.io/OWNER/REPO:TAG
 
 Example:
 ```
-ghcr.io/yourusername/stream-aggregator:latest
+ghcr.io/datagutt/stream-aggregator:latest
 ```
 
 ### Local Testing

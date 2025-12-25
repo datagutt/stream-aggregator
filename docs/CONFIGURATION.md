@@ -4,49 +4,70 @@ This document explains how to configure StreamAggregator using TOML configuratio
 
 ## Configuration System
 
-### Overview
-
 StreamAggregator uses a layered configuration system with the following priority (highest to lowest):
 
 1. **Command-line arguments** - Highest priority
-2. **Environment variables** - Override config file
+2. **Environment variables** - Override config file  
 3. **Configuration file** (TOML) - Base configuration
 4. **Default values** - Fallback defaults
 
 This means you can set defaults in `config.toml`, override with environment variables, and further override with CLI flags.
 
-## Using Configuration Files
+## Quick Start
 
-### Basic config.toml Example
+### Option 1: Environment Variables (Simplest)
 
-Create a `config.toml` file in your project directory:
+```bash
+# Create .env file
+cat > .env << EOF
+HOST=0.0.0.0
+PORT=8080
+STORE_BACKEND=diesel
+DATABASE_URL=/data/streams.db
+TWITCH_CLIENT_ID=your_id
+TWITCH_CLIENT_SECRET=your_secret
+EOF
+
+# Run
+docker-compose up  # Or cargo run
+```
+
+### Option 2: Configuration File (Recommended)
+
+```bash
+# Copy example
+cp config.example.toml config.toml
+
+# Edit your config
+nano config.toml
+
+# Run
+cargo run -- --config config.toml
+```
+
+## Configuration File Format
+
+### Basic Example
 
 ```toml
-# config.toml - StreamAggregator Configuration
+# config.toml
 
 [server]
 host = "0.0.0.0"
 port = 8080
 
 [auth]
-# API keys for authentication (empty = public mode)
-api_keys = []
-# Require authentication for all requests (false = public reads)
-require_all = false
+api_keys = []  # Empty = public access
+require_all = false  # false = public reads, auth for writes
 
 [scheduler]
-# Scrape interval in seconds (default: 5 minutes)
-interval_secs = 300
-# Maximum concurrent scrape tasks
+interval_secs = 300  # Scrape every 5 minutes
 max_concurrent = 10
 
 [store]
-# Storage backend: "memory" or "diesel"
-backend = "diesel"
-# Database path (SQLite) or URL (PostgreSQL)
-database_url = "stream_aggregator.db"
+backend = "diesel"  # Use Diesel ORM
+database_url = "stream_aggregator.db"  # SQLite file path
 
-# Platform providers
 [providers.twitch]
 enabled = true
 client_id = "your_twitch_client_id"
@@ -57,172 +78,234 @@ enabled = true
 
 [providers.kick]
 enabled = true
+```
+
+### Complete Example
+
+See `config.example.toml` in the repository root for a complete example with all available options.
+
+## Configuration Options
+
+### Server Settings
+
+```toml
+[server]
+host = "0.0.0.0"     # Bind address (0.0.0.0 for Docker, 127.0.0.1 for local)
+port = 8080           # HTTP port
+```
+
+### Authentication
+
+```toml
+[auth]
+# API keys for authentication (generate with: openssl rand -hex 32)
+api_keys = ["secret-key-1", "secret-key-2"]
+
+# Require authentication for ALL requests (including GET)
+# false = Public reads, auth for writes (default)
+# true = All endpoints require authentication
+require_all = false
+```
+
+**Environment variable:**
+```bash
+API_KEYS=secret-key-1,secret-key-2
+REQUIRE_AUTH_ALL=true
+```
+
+### Scheduler
+
+```toml
+[scheduler]
+interval_secs = 300      # Scrape interval (seconds)
+max_concurrent = 10      # Max concurrent scrape tasks
+```
+
+**Recommended intervals:**
+- Development: 60 seconds (fast feedback)
+- Production: 300 seconds (5 minutes, balanced)
+- Low traffic: 600 seconds (10 minutes, reduce API usage)
+
+### Storage Backend
+
+```toml
+[store]
+backend = "diesel"  # Options: "memory" or "diesel"
+database_url = "stream_aggregator.db"  # SQLite file path
+```
+
+**SQLite (default):**
+```toml
+database_url = "stream_aggregator.db"          # Relative path
+database_url = "/data/streams.db"              # Absolute path
+database_url = "/var/lib/streamagg/data.db"    # Custom location
+```
+
+**PostgreSQL (future support):**
+```toml
+database_url = "postgres://user:password@localhost:5432/dbname"
+```
+
+**In-memory (development only):**
+```toml
+backend = "memory"  # Data lost on restart
+```
+
+### Platform Providers
+
+All providers are enabled by default. Disable unwanted platforms:
+
+```toml
+[providers.twitch]
+enabled = true
+client_id = "your_client_id"       # Required
+client_secret = "your_client_secret"  # Required
+
+[providers.youtube]
+enabled = true  # No credentials needed
+
+[providers.kick]
+enabled = true  # No credentials needed
 
 [providers.dlive]
-enabled = true
+enabled = true  # No credentials needed
 
 [providers.trovo]
 enabled = true
+client_id = ""  # Optional
 
 [providers.guac]
-enabled = true
+enabled = true  # No credentials needed
 
 [providers.angelthump]
-enabled = true
+enabled = true  # No credentials needed
 
 [providers.robotstreamer]
-enabled = true
+enabled = true  # No credentials needed
 ```
 
-### Using config.toml Locally
+## Environment Variables
+
+All configuration options can be set via environment variables. The application automatically reads from:
+
+1. System environment variables
+2. `.env` file in the working directory
+
+### Basic Variables
 
 ```bash
-# Run with config.toml in current directory
-cargo run
+# Server
+HOST=0.0.0.0
+PORT=8080
 
-# Or specify config file path
-cargo run -- --config /path/to/config.toml
+# Logging
+RUST_LOG=info  # Options: trace, debug, info, warn, error
+
+# Storage
+STORE_BACKEND=diesel
+DATABASE_URL=/data/streams.db
+
+# Scheduler
+SCRAPE_INTERVAL_SECS=300
+
+# Authentication
+API_KEYS=key1,key2,key3
+REQUIRE_AUTH_ALL=false
 ```
 
-### Using config.toml with Docker
-
-**Option 1: Mount as read-only volume (recommended)**
+### Provider Credentials
 
 ```bash
+# Twitch (required)
+TWITCH_CLIENT_ID=your_client_id
+TWITCH_CLIENT_SECRET=your_client_secret
+
+# Trovo (optional)
+TROVO_CLIENT_ID=your_client_id
+```
+
+### Docker-Specific
+
+When using Docker, environment variables take priority over config file:
+
+```yaml
 # docker-compose.yml
-services:
-  stream-aggregator:
-    build: .
-    volumes:
-      - ./config.toml:/app/config.toml:ro  # Read-only mount
-      - stream-data:/data
+environment:
+  - HOST=0.0.0.0
+  - PORT=8080
+  - DATABASE_URL=/data/streams.db
+  - TWITCH_CLIENT_ID=${TWITCH_CLIENT_ID}
+  - TWITCH_CLIENT_SECRET=${TWITCH_CLIENT_SECRET}
 ```
 
-```bash
-# Or with docker run
-docker run -v $(pwd)/config.toml:/app/config.toml:ro stream-aggregator
-```
+## Configuration Patterns
 
-**Option 2: Copy into image during build**
+### Pattern 1: File + Environment Secrets
 
-```dockerfile
-# Custom Dockerfile
-FROM stream-aggregator:latest
-COPY config.toml /app/config.toml
-CMD ["stream-aggregator", "--config", "/app/config.toml"]
-```
+**Best for**: Production deployments
 
-### Advanced Configuration Examples
-
-#### Production Configuration with Authentication
-
+**config.toml** (committed to git):
 ```toml
-# config.production.toml
 [server]
 host = "0.0.0.0"
 port = 8080
-
-[auth]
-# Strong API keys for production
-api_keys = [
-    "prod-key-a1b2c3d4e5f6",
-    "admin-key-x9y8z7w6v5u4"
-]
-# Require auth for all endpoints (including GET requests)
-require_all = true
-
-[scheduler]
-interval_secs = 180  # 3 minutes for faster updates
-max_concurrent = 20
-
-[store]
-backend = "diesel"
-database_url = "/data/streams.db"
-
-[providers.twitch]
-enabled = true
-client_id = "your_production_twitch_id"
-client_secret = "your_production_secret"
-
-[providers.youtube]
-enabled = true
-
-[providers.kick]
-enabled = true
-```
-
-Usage:
-```bash
-docker run -v ./config.production.toml:/app/config.toml:ro stream-aggregator
-```
-
-#### Multi-Platform Configuration
-
-```toml
-# config.multi-platform.toml
-
-[server]
-host = "0.0.0.0"
-port = 8080
-
-[auth]
-api_keys = []  # Public access
-require_all = false
 
 [scheduler]
 interval_secs = 300
-max_concurrent = 15
 
 [store]
 backend = "diesel"
 database_url = "/data/streams.db"
 
-# Enable all platforms
 [providers.twitch]
 enabled = true
-client_id = "twitch_id"
-client_secret = "twitch_secret"
-
-[providers.youtube]
-enabled = true
-
-[providers.kick]
-enabled = true
-
-[providers.dlive]
-enabled = true
-
-[providers.trovo]
-enabled = true
-
-[providers.guac]
-enabled = true
-
-[providers.angelthump]
-enabled = true
-
-[providers.robotstreamer]
-enabled = true
+# Don't put secrets in config file!
 ```
 
-#### Development Configuration
+**.env** (in .gitignore):
+```bash
+TWITCH_CLIENT_ID=your_id
+TWITCH_CLIENT_SECRET=your_secret
+API_KEYS=your-secret-key
+```
 
+### Pattern 2: All Environment Variables
+
+**Best for**: Docker, Coolify, cloud platforms
+
+```bash
+# .env
+HOST=0.0.0.0
+PORT=8080
+STORE_BACKEND=diesel
+DATABASE_URL=/data/streams.db
+SCRAPE_INTERVAL_SECS=300
+TWITCH_CLIENT_ID=your_id
+TWITCH_CLIENT_SECRET=your_secret
+API_KEYS=your-secret-key
+```
+
+No config.toml file needed.
+
+### Pattern 3: Development Config
+
+**Best for**: Local development
+
+**config.dev.toml**:
 ```toml
-# config.dev.toml
 [server]
 host = "127.0.0.1"  # Localhost only
 port = 3000
 
 [auth]
-api_keys = ["dev-test-key"]
+api_keys = ["dev-key"]
 require_all = false
 
 [scheduler]
-interval_secs = 60  # Fast updates for testing
-max_concurrent = 5
+interval_secs = 60  # Fast updates
 
 [store]
-backend = "memory"  # In-memory for fast iteration
+backend = "memory"  # No persistence needed
 
 [providers.twitch]
 enabled = true
@@ -231,9 +314,6 @@ client_secret = "dev_client_secret"
 
 [providers.youtube]
 enabled = false  # Disable for faster dev
-
-[providers.kick]
-enabled = true
 ```
 
 Usage:
@@ -241,679 +321,171 @@ Usage:
 cargo run -- --config config.dev.toml
 ```
 
-### Environment Variables
+## Using with Docker
 
-All configuration options can be set via environment variables with the prefix `STREAM_AGG_`:
+### Option 1: Mount config.toml
 
 ```bash
-# Server
-STREAM_AGG_SERVER_HOST=0.0.0.0
-STREAM_AGG_SERVER_PORT=8080
-
-# TLS
-STREAM_AGG_SERVER_TLS_ENABLED=true
-STREAM_AGG_SERVER_TLS_CERT_PATH=/path/to/cert
-
-# Providers
-STREAM_AGG_PROVIDERS_TWITCH_CLIENT_ID=your_client_id
-STREAM_AGG_PROVIDERS_TWITCH_CLIENT_SECRET=your_secret
-
-# Storage
-STREAM_AGG_STORE_BACKEND=diesel
-STREAM_AGG_STORE_DATABASE_URL=postgres://user:pass@localhost/dbname
-# Or for SQLite:
-# STREAM_AGG_STORE_DATABASE_URL=./data/streams.db
+# docker-compose.yml
+volumes:
+  - ./config.toml:/app/config.toml:ro
+  - stream-data:/data
 ```
 
-### Configuration Loading
+### Option 2: Environment variables
 
-```rust
-use config::{Config, ConfigError, Environment, File};
-use serde::Deserialize;
-
-#[derive(Debug, Deserialize)]
-pub struct AppConfig {
-    pub server: ServerConfig,
-    pub api: ApiConfig,
-    pub scraping: ScrapingConfig,
-    pub storage: StorageConfig,
-    pub discovery: DiscoveryConfig,
-    pub providers: ProvidersConfig,
-    pub observability: ObservabilityConfig,
-    pub health: HealthConfig,
-}
-
-impl AppConfig {
-    pub fn load() -> Result<Self, ConfigError> {
-        let config = Config::builder()
-            // Start with defaults
-            .add_source(File::from_str(DEFAULT_CONFIG, config::FileFormat::Toml))
-            // Load from config file if exists
-            .add_source(File::with_name("config").required(false))
-            // Load from environment
-            .add_source(
-                Environment::with_prefix("STREAM_AGG")
-                    .separator("_")
-                    .try_parsing(true)
-            )
-            .build()?;
-            
-        config.try_deserialize()
-    }
-    
-    /// Validate configuration
-    pub fn validate(&self) -> Result<(), Vec<String>> {
-        let mut errors = Vec::new();
-        
-        // Validate Twitch credentials if enabled
-        if self.providers.twitch.enabled {
-            if self.providers.twitch.client_id.is_empty() {
-                errors.push("Twitch client_id is required when Twitch is enabled".into());
-            }
-            if self.providers.twitch.client_secret.is_empty() {
-                errors.push("Twitch client_secret is required when Twitch is enabled".into());
-            }
-        }
-        
-        // Validate Trovo credentials if enabled
-        if self.providers.trovo.enabled && self.providers.trovo.client_id.is_empty() {
-            errors.push("Trovo client_id is required when Trovo is enabled".into());
-        }
-        
-        // Validate storage
-        match self.storage.backend.as_str() {
-            "postgres" if self.storage.postgres.url.is_empty() => {
-                errors.push("PostgreSQL URL is required when using postgres backend".into());
-            }
-            _ => {}
-        }
-        
-        if errors.is_empty() {
-            Ok(())
-        } else {
-            Err(errors)
-        }
-    }
-}
+```bash
+# docker-compose.yml
+environment:
+  - HOST=0.0.0.0
+  - DATABASE_URL=/data/streams.db
+  - TWITCH_CLIENT_ID=${TWITCH_CLIENT_ID}
 ```
 
----
+### Option 3: Build into image
 
-## Storage System
-
-### Storage Trait
-
-```rust
-use async_trait::async_trait;
-use chrono::{DateTime, Utc};
-
-#[async_trait]
-pub trait StreamStore: Send + Sync + 'static {
-    // =========================================================================
-    // Stream Operations
-    // =========================================================================
-    
-    /// Insert or update stream information
-    async fn upsert_stream(&self, stream: &StreamInfo) -> Result<(), StoreError>;
-    
-    /// Get stream by ID
-    async fn get_stream(&self, id: &StreamId) -> Result<Option<StreamInfo>, StoreError>;
-    
-    /// Get all streams with optional filtering
-    async fn get_streams(&self, query: &StreamQuery) -> Result<StreamPage, StoreError>;
-    
-    /// Delete a stream
-    async fn delete_stream(&self, id: &StreamId) -> Result<bool, StoreError>;
-    
-    /// Bulk upsert streams
-    async fn upsert_streams(&self, streams: &[StreamInfo]) -> Result<usize, StoreError> {
-        let mut count = 0;
-        for stream in streams {
-            self.upsert_stream(stream).await?;
-            count += 1;
-        }
-        Ok(count)
-    }
-    
-    // =========================================================================
-    // Streamer Tracking Operations
-    // =========================================================================
-    
-    /// Add a streamer to track
-    async fn add_tracked_streamer(&self, streamer: &TrackedStreamer) -> Result<(), StoreError>;
-    
-    /// Remove a tracked streamer
-    async fn remove_tracked_streamer(
-        &self, 
-        platform: &str, 
-        user_id: &str
-    ) -> Result<bool, StoreError>;
-    
-    /// Get all tracked streamers
-    async fn get_tracked_streamers(
-        &self, 
-        query: &TrackedStreamerQuery
-    ) -> Result<Vec<TrackedStreamer>, StoreError>;
-    
-    /// Update tracked streamer metadata
-    async fn update_tracked_streamer(
-        &self,
-        platform: &str,
-        user_id: &str,
-        update: &TrackedStreamerUpdate,
-    ) -> Result<bool, StoreError>;
-    
-    // =========================================================================
-    // Discovery Rule Operations
-    // =========================================================================
-    
-    /// Add a discovery rule
-    async fn add_discovery_rule(&self, rule: &DiscoveryRule) -> Result<(), StoreError>;
-    
-    /// Get all discovery rules
-    async fn get_discovery_rules(&self) -> Result<Vec<DiscoveryRule>, StoreError>;
-    
-    /// Update a discovery rule
-    async fn update_discovery_rule(&self, rule: &DiscoveryRule) -> Result<bool, StoreError>;
-    
-    /// Delete a discovery rule
-    async fn delete_discovery_rule(&self, rule_id: &str) -> Result<bool, StoreError>;
-    
-    // =========================================================================
-    // Statistics
-    // =========================================================================
-    
-    /// Get storage statistics
-    async fn get_stats(&self) -> Result<StoreStats, StoreError>;
-}
-
-/// Query parameters for fetching streams
-#[derive(Debug, Clone, Default)]
-pub struct StreamQuery {
-    /// Filter by platform
-    pub platform: Option<String>,
-    /// Filter by live status
-    pub is_live: Option<bool>,
-    /// Filter by labels (all must match)
-    pub labels: HashMap<String, String>,
-    /// Filter by group
-    pub group: Option<String>,
-    /// Search in display name or title
-    pub search: Option<String>,
-    /// Minimum viewer count
-    pub min_viewers: Option<u64>,
-    /// Sort field
-    pub sort_by: SortField,
-    /// Sort direction
-    pub sort_order: SortOrder,
-    /// Pagination: page number (1-indexed)
-    pub page: u32,
-    /// Pagination: items per page
-    pub per_page: u32,
-}
-
-#[derive(Debug, Clone)]
-pub enum SortField {
-    DisplayName,
-    ViewerCount,
-    Platform,
-    LastUpdated,
-    Priority,
-}
-
-#[derive(Debug, Clone)]
-pub struct StreamPage {
-    pub streams: Vec<StreamInfo>,
-    pub total: u64,
-    pub page: u32,
-    pub per_page: u32,
-    pub total_pages: u32,
-}
+```dockerfile
+FROM ghcr.io/datagutt/stream-aggregator:latest
+COPY config.production.toml /app/config.toml
+CMD ["stream-aggregator", "--config", "/app/config.toml"]
 ```
 
-### In-Memory Store
+## Verifying Configuration
 
-```rust
-use dashmap::DashMap;
-use std::sync::Arc;
+### Check current configuration
 
-pub struct MemoryStore {
-    streams: DashMap<StreamId, StreamInfo>,
-    tracked_streamers: DashMap<(String, String), TrackedStreamer>,
-    discovery_rules: DashMap<String, DiscoveryRule>,
-}
+```bash
+# Run with verbose logging
+RUST_LOG=debug cargo run
 
-impl MemoryStore {
-    pub fn new() -> Self {
-        Self {
-            streams: DashMap::new(),
-            tracked_streamers: DashMap::new(),
-            discovery_rules: DashMap::new(),
-        }
-    }
-}
-
-#[async_trait]
-impl StreamStore for MemoryStore {
-    async fn upsert_stream(&self, stream: &StreamInfo) -> Result<(), StoreError> {
-        self.streams.insert(stream.id.clone(), stream.clone());
-        Ok(())
-    }
-    
-    async fn get_stream(&self, id: &StreamId) -> Result<Option<StreamInfo>, StoreError> {
-        Ok(self.streams.get(id).map(|r| r.clone()))
-    }
-    
-    async fn get_streams(&self, query: &StreamQuery) -> Result<StreamPage, StoreError> {
-        let mut streams: Vec<_> = self.streams
-            .iter()
-            .map(|r| r.value().clone())
-            .filter(|s| {
-                // Apply filters
-                if let Some(ref platform) = query.platform {
-                    if &s.platform != platform { return false; }
-                }
-                if let Some(is_live) = query.is_live {
-                    if s.is_live != is_live { return false; }
-                }
-                // ... more filters
-                true
-            })
-            .collect();
-        
-        // Sort
-        match query.sort_by {
-            SortField::ViewerCount => {
-                streams.sort_by(|a, b| {
-                    b.viewer_count.unwrap_or(0).cmp(&a.viewer_count.unwrap_or(0))
-                });
-            }
-            // ... other sort fields
-        }
-        
-        // Paginate
-        let total = streams.len() as u64;
-        let start = ((query.page - 1) * query.per_page) as usize;
-        let streams: Vec<_> = streams.into_iter().skip(start).take(query.per_page as usize).collect();
-        
-        Ok(StreamPage {
-            streams,
-            total,
-            page: query.page,
-            per_page: query.per_page,
-            total_pages: ((total as f64) / (query.per_page as f64)).ceil() as u32,
-        })
-    }
-    
-    // ... other implementations
-}
+# Check which config file is loaded
+# Look for: "Loading configuration from file: config.toml"
 ```
 
-### SQLite Store
+### Test database connection
 
-```rust
-use sqlx::{SqlitePool, sqlite::SqlitePoolOptions};
+```bash
+# Set DATABASE_URL
+export DATABASE_URL=./test.db
 
-pub struct SqliteStore {
-    pool: SqlitePool,
-}
+# Run application
+cargo run
 
-impl SqliteStore {
-    pub async fn new(config: &SqliteConfig) -> Result<Self, StoreError> {
-        let pool = SqlitePoolOptions::new()
-            .max_connections(config.pool_size)
-            .connect(&format!("sqlite:{}", config.path))
-            .await?;
-            
-        // Run migrations
-        sqlx::migrate!("./migrations/sqlite").run(&pool).await?;
-        
-        // Enable WAL mode if configured
-        if config.wal_mode {
-            sqlx::query("PRAGMA journal_mode=WAL")
-                .execute(&pool)
-                .await?;
-        }
-        
-        Ok(Self { pool })
-    }
-}
-
-#[async_trait]
-impl StreamStore for SqliteStore {
-    async fn upsert_stream(&self, stream: &StreamInfo) -> Result<(), StoreError> {
-        sqlx::query(r#"
-            INSERT INTO streams (
-                id, platform, user_id, display_name, avatar_url, 
-                is_live, title, viewer_count, thumbnail_url, category,
-                tags, language, started_at, last_updated, metadata
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET
-                display_name = excluded.display_name,
-                avatar_url = excluded.avatar_url,
-                is_live = excluded.is_live,
-                title = excluded.title,
-                viewer_count = excluded.viewer_count,
-                thumbnail_url = excluded.thumbnail_url,
-                category = excluded.category,
-                tags = excluded.tags,
-                language = excluded.language,
-                started_at = excluded.started_at,
-                last_updated = excluded.last_updated,
-                metadata = excluded.metadata
-        "#)
-        .bind(&stream.id.0)
-        .bind(&stream.platform)
-        .bind(&stream.user_id)
-        .bind(&stream.display_name)
-        .bind(&stream.avatar_url)
-        .bind(stream.is_live)
-        .bind(&stream.title)
-        .bind(stream.viewer_count.map(|v| v as i64))
-        .bind(&stream.thumbnail_url)
-        .bind(&stream.category)
-        .bind(serde_json::to_string(&stream.tags)?)
-        .bind(&stream.language)
-        .bind(stream.started_at)
-        .bind(stream.last_updated)
-        .bind(serde_json::to_string(&stream.metadata)?)
-        .execute(&self.pool)
-        .await?;
-        
-        Ok(())
-    }
-    
-    // ... other implementations
-}
+# Check for: "Database connection established"
 ```
 
-### PostgreSQL Store
+### Validate Twitch credentials
 
-```rust
-use sqlx::{PgPool, postgres::PgPoolOptions};
-
-pub struct PostgresStore {
-    pool: PgPool,
-}
-
-impl PostgresStore {
-    pub async fn new(config: &PostgresConfig) -> Result<Self, StoreError> {
-        let pool = PgPoolOptions::new()
-            .max_connections(config.pool_size)
-            .connect_timeout(Duration::from_secs(config.connect_timeout_secs))
-            .connect(&config.url)
-            .await?;
-            
-        // Run migrations
-        sqlx::migrate!("./migrations/postgres").run(&pool).await?;
-        
-        Ok(Self { pool })
-    }
-}
-
-// Similar implementation to SQLite with PostgreSQL-specific optimizations
+```bash
+# Run with Twitch enabled
+# Check logs for: "Twitch provider initialized"
+# If credentials are invalid: "Failed to authenticate with Twitch"
 ```
 
-### Database Migrations
+## Troubleshooting
 
-```sql
--- migrations/sqlite/001_initial.sql
+### Config file not found
 
-CREATE TABLE IF NOT EXISTS streams (
-    id TEXT PRIMARY KEY,
-    platform TEXT NOT NULL,
-    user_id TEXT NOT NULL,
-    display_name TEXT NOT NULL,
-    avatar_url TEXT,
-    is_live BOOLEAN NOT NULL DEFAULT FALSE,
-    title TEXT,
-    viewer_count INTEGER,
-    thumbnail_url TEXT,
-    category TEXT,
-    tags TEXT NOT NULL DEFAULT '[]',  -- JSON array
-    language TEXT,
-    started_at TEXT,  -- ISO 8601
-    last_updated TEXT NOT NULL,  -- ISO 8601
-    metadata TEXT NOT NULL DEFAULT '{}'  -- JSON object
-);
-
-CREATE INDEX idx_streams_platform ON streams(platform);
-CREATE INDEX idx_streams_is_live ON streams(is_live);
-CREATE INDEX idx_streams_viewer_count ON streams(viewer_count);
-CREATE UNIQUE INDEX idx_streams_platform_user ON streams(platform, user_id);
-
-CREATE TABLE IF NOT EXISTS tracked_streamers (
-    platform TEXT NOT NULL,
-    user_id TEXT NOT NULL,
-    custom_name TEXT,
-    group_name TEXT,
-    priority INTEGER,
-    labels TEXT NOT NULL DEFAULT '{}',  -- JSON object
-    source TEXT NOT NULL DEFAULT 'manual',
-    discovery_rule_id TEXT,
-    created_at TEXT NOT NULL,
-    PRIMARY KEY (platform, user_id)
-);
-
-CREATE INDEX idx_tracked_platform ON tracked_streamers(platform);
-CREATE INDEX idx_tracked_group ON tracked_streamers(group_name);
-CREATE INDEX idx_tracked_source ON tracked_streamers(source);
-
-CREATE TABLE IF NOT EXISTS discovery_rules (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    platform TEXT NOT NULL,
-    enabled BOOLEAN NOT NULL DEFAULT TRUE,
-    filters TEXT NOT NULL,  -- JSON object
-    interval_secs INTEGER NOT NULL,
-    apply_labels TEXT NOT NULL DEFAULT '{}',  -- JSON object
-    apply_group TEXT,
-    created_at TEXT NOT NULL,
-    last_run_at TEXT
-);
-
-CREATE INDEX idx_discovery_platform ON discovery_rules(platform);
-CREATE INDEX idx_discovery_enabled ON discovery_rules(enabled);
+```
+Error: Failed to load config from config.toml: No such file or directory
 ```
 
----
+**Solutions:**
+- Run from correct directory: `cd /path/to/project`
+- Specify full path: `--config /path/to/config.toml`
+- Use environment variables instead
 
-## Caching Layer
+### Invalid TOML syntax
 
-```rust
-use moka::future::Cache;
-use std::time::Duration;
-
-pub struct CachedStore<S: StreamStore> {
-    inner: S,
-    stream_cache: Cache<StreamId, StreamInfo>,
-    query_cache: Cache<String, StreamPage>,
-}
-
-impl<S: StreamStore> CachedStore<S> {
-    pub fn new(inner: S, config: &CacheConfig) -> Self {
-        let stream_cache = Cache::builder()
-            .max_capacity(config.max_entries as u64)
-            .time_to_live(Duration::from_secs(config.stream_ttl_secs))
-            .build();
-            
-        let query_cache = Cache::builder()
-            .max_capacity(1000)
-            .time_to_live(Duration::from_secs(10))  // Short TTL for queries
-            .build();
-            
-        Self {
-            inner,
-            stream_cache,
-            query_cache,
-        }
-    }
-}
-
-#[async_trait]
-impl<S: StreamStore> StreamStore for CachedStore<S> {
-    async fn upsert_stream(&self, stream: &StreamInfo) -> Result<(), StoreError> {
-        // Update inner store
-        self.inner.upsert_stream(stream).await?;
-        
-        // Update cache
-        self.stream_cache.insert(stream.id.clone(), stream.clone()).await;
-        
-        // Invalidate query cache
-        self.query_cache.invalidate_all();
-        
-        Ok(())
-    }
-    
-    async fn get_stream(&self, id: &StreamId) -> Result<Option<StreamInfo>, StoreError> {
-        // Try cache first
-        if let Some(stream) = self.stream_cache.get(id).await {
-            return Ok(Some(stream));
-        }
-        
-        // Fall back to inner store
-        let stream = self.inner.get_stream(id).await?;
-        
-        // Populate cache
-        if let Some(ref s) = stream {
-            self.stream_cache.insert(id.clone(), s.clone()).await;
-        }
-        
-        Ok(stream)
-    }
-    
-    // ... other implementations
-}
+```
+Error: TOML parse error at line 10, column 5
 ```
 
----
+**Solutions:**
+- Validate TOML: https://www.toml-lint.com/
+- Check quotes, brackets, commas
+- Compare with `config.example.toml`
 
-## Streamers Configuration File
+### Database connection failed
 
-For backward compatibility and simple deployments, support a `streamers.toml` file:
-
-```toml
-# streamers.toml - Manual Streamer List
-
-# Simple format
-[[streamers]]
-platform = "twitch"
-user_id = "ninja"
-
-[[streamers]]
-platform = "twitch"
-user_id = "shroud"
-custom_name = "Shroud Gaming"
-group = "fps-pros"
-priority = 1
-labels = { country = "us", team = "sentinels" }
-
-[[streamers]]
-platform = "youtube"
-user_id = "UC-lHJZR3Gqxm24_Vd_AJ5Yw"  # PewDiePie
-group = "entertainers"
-
-[[streamers]]
-platform = "kick"
-user_id = "xqc"
-
-# Discovery rules
-[[discovery]]
-id = "norwegian-twitch"
-name = "Norwegian Twitch Streamers"
-platform = "twitch"
-enabled = true
-interval_secs = 600
-
-[discovery.filters]
-languages = ["no"]
-min_viewers = 5
-
-[discovery.apply]
-group = "norwegian"
-labels = { country = "no", source = "auto-discovery" }
-
-[[discovery]]
-id = "valorant-streamers"
-name = "Valorant Streamers"
-platform = "twitch"
-enabled = true
-interval_secs = 300
-
-[discovery.filters]
-categories = ["Valorant"]
-min_viewers = 100
-limit = 50
-
-[discovery.apply]
-group = "valorant"
+```
+Error: Failed to connect to database: unable to open database file
 ```
 
-### Loading Streamers File
+**Solutions:**
+- Check DATABASE_URL path exists
+- Ensure parent directory is writable
+- For Docker, verify volume is mounted
 
-```rust
-#[derive(Debug, Deserialize)]
-pub struct StreamersFile {
-    #[serde(default)]
-    pub streamers: Vec<StreamerEntry>,
-    #[serde(default)]
-    pub discovery: Vec<DiscoveryEntry>,
-}
+### Twitch authentication failed
 
-#[derive(Debug, Deserialize)]
-pub struct StreamerEntry {
-    pub platform: String,
-    pub user_id: String,
-    pub custom_name: Option<String>,
-    pub group: Option<String>,
-    pub priority: Option<i32>,
-    #[serde(default)]
-    pub labels: HashMap<String, String>,
-}
-
-impl StreamersFile {
-    pub fn load(path: &Path) -> Result<Self, ConfigError> {
-        let content = std::fs::read_to_string(path)?;
-        toml::from_str(&content).map_err(Into::into)
-    }
-    
-    pub async fn import_to_store(&self, store: &dyn StreamStore) -> Result<ImportResult, StoreError> {
-        let mut imported = 0;
-        let mut failed = 0;
-        
-        for entry in &self.streamers {
-            let streamer = TrackedStreamer {
-                platform: entry.platform.clone(),
-                user_id: entry.user_id.clone(),
-                custom_name: entry.custom_name.clone(),
-                group: entry.group.clone(),
-                priority: entry.priority,
-                labels: entry.labels.clone(),
-                source: StreamerSource::Manual,
-                discovery_rule_id: None,
-                created_at: Utc::now(),
-            };
-            
-            match store.add_tracked_streamer(&streamer).await {
-                Ok(_) => imported += 1,
-                Err(e) => {
-                    tracing::warn!(
-                        platform = %entry.platform,
-                        user_id = %entry.user_id,
-                        error = %e,
-                        "Failed to import streamer"
-                    );
-                    failed += 1;
-                }
-            }
-        }
-        
-        // Import discovery rules
-        for entry in &self.discovery {
-            // Convert to DiscoveryRule and add to store
-        }
-        
-        Ok(ImportResult { imported, failed })
-    }
-}
 ```
+Error: Failed to authenticate with Twitch: invalid client
+```
+
+**Solutions:**
+- Verify TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET
+- Check credentials at: https://dev.twitch.tv/console/apps
+- Ensure credentials are not quoted incorrectly
+
+## Best Practices
+
+### Security
+
+1. **Never commit secrets to git**
+   - Use `.env` for secrets (add to `.gitignore`)
+   - Use environment variables in production
+   - Rotate API keys regularly
+
+2. **Use strong API keys**
+   ```bash
+   # Generate secure keys
+   openssl rand -hex 32
+   ```
+
+3. **Enable authentication in production**
+   ```toml
+   [auth]
+   api_keys = ["strong-random-key"]
+   require_all = true  # Require auth for everything
+   ```
+
+### Performance
+
+1. **Adjust scrape interval based on load**
+   - More streamers = longer interval
+   - Fewer streamers = shorter interval
+
+2. **Limit concurrent tasks**
+   ```toml
+   [scheduler]
+   max_concurrent = 5  # Don't overwhelm APIs
+   ```
+
+3. **Use Diesel backend in production**
+   ```toml
+   [store]
+   backend = "diesel"  # Persistent storage
+   ```
+
+### Organization
+
+1. **Use different configs per environment**
+   - `config.dev.toml` - Development
+   - `config.staging.toml` - Staging
+   - `config.production.toml` - Production
+
+2. **Document your config**
+   - Add comments explaining non-obvious settings
+   - Keep `config.example.toml` updated
+
+3. **Version control**
+   - Commit: `config.example.toml`, `config.production.example.toml`
+   - Ignore: `config.toml`, `.env`
+
+## See Also
+
+- [config.example.toml](../config.example.toml) - Complete configuration example
+- [.env.example](../.env.example) - Environment variables template
+- [DEPLOYMENT.md](./DEPLOYMENT.md) - Production deployment guide
+- [API.md](./API.md) - API documentation

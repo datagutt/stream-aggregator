@@ -12,7 +12,7 @@ version: '3.8'
 services:
   stream-aggregator:
     # Option 1: Use pre-built image from GitHub Container Registry (recommended)
-    image: ghcr.io/yourusername/stream-aggregator:latest
+    image: ghcr.io/datagutt/stream-aggregator:latest
     
     # Option 2: Build from source (uncomment below and comment out 'image' above)
     # build:

@@ -27,7 +27,7 @@ COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates
 
 # Build release binary with SQLite support
-RUN cargo build --release --package stream-aggregator --features sqlite--store
+RUN cargo build --release --package stream-aggregator --features diesel-store
 
 # ============================================================================
 # Stage 2: Runtime
@@ -86,7 +86,7 @@ COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates
 
 # Build with libSQL support instead of SQLite
-RUN cargo build --release --package stream-aggregator --features sqlite-store
+RUN cargo build --release --package stream-aggregator --features diesel-store
 
 # ============================================================================
 # Runtime for libSQL version
