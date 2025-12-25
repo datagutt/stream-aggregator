@@ -1,10 +1,13 @@
 use anyhow::{anyhow, Result};
 use chrono::Utc;
 use clap::Parser;
+use diesel::prelude::*;
+use diesel::sqlite::SqliteConnection;
 use serde::Deserialize;
-use sqlx::sqlite::SqlitePool;
 use std::collections::{HashMap, HashSet};
 use std::fs;
+use stream_aggregator_core::models::{StreamerSource, TrackedStreamer};
+use stream_aggregator_store::DieselStore;
 use wreq::Client;
 
 const TWITCH_USER_BATCH_LIMIT: usize = 50;
@@ -17,8 +20,8 @@ struct Args {
     #[arg(short, long, default_value = "lsnd/people.json")]
     input: String,
 
-    /// SQLite database URL
-    #[arg(short, long, default_value = "sqlite:stream_aggregator.db")]
+    /// SQLite database path
+    #[arg(short, long, default_value = "stream_aggregator.db")]
     database_url: String,
 
     /// Dry run mode - show what would be migrated without making changes
@@ -287,24 +290,20 @@ async fn main() -> Result<()> {
     }
 
     println!("\nConnecting to database: {}", args.database_url);
-    let pool = SqlitePool::connect(&args.database_url).await?;
-
-    // Run migrations to ensure schema exists
-    println!("Running migrations...");
-    sqlx::migrate!("../stream-aggregator-store/migrations")
-        .run(&pool)
-        .await?;
+    
+    // Create DieselStore (this automatically runs migrations)
+    let store = DieselStore::new(&args.database_url)?;
+    println!("Database initialized (migrations applied automatically)");
 
     println!("Migrating streamers...");
 
     for old_streamer in unique_streamers {
         // Check if streamer already exists
-        let exists: Option<(i32,)> =
-            sqlx::query_as("SELECT 1 FROM tracked_streamers WHERE platform = ? AND user_id = ?")
-                .bind(&old_streamer.platform)
-                .bind(&old_streamer.user_id)
-                .fetch_optional(&pool)
-                .await?;
+        use stream_aggregator_core::traits::StreamStore;
+        
+        let exists = store
+            .get_tracked_streamer(&old_streamer.platform, &old_streamer.user_id)
+            .await?;
 
         if exists.is_some() {
             println!(
@@ -336,26 +335,24 @@ async fn main() -> Result<()> {
         let group_name = if old_streamer.platform.to_lowercase() == "twitch" {
             None
         } else {
-            old_streamer.team.as_ref()
+            old_streamer.team.clone()
         };
 
-        // Insert the streamer (labels are empty - featured_rank is stored as priority)
-        sqlx::query(
-            r#"
-            INSERT INTO tracked_streamers (
-                platform, user_id, custom_name, group_name, priority,
-                labels, source, discovery_rule_id, created_at
-            ) VALUES (?, ?, ?, ?, ?, '{}', 'manual', NULL, ?)
-            "#,
-        )
-        .bind(&old_streamer.platform)
-        .bind(&old_streamer.user_id)
-        .bind(&old_streamer.custom_username)
-        .bind(&group_name)
-        .bind(&priority)
-        .bind(Utc::now().to_rfc3339())
-        .execute(&pool)
-        .await?;
+        // Create TrackedStreamer
+        let tracked_streamer = TrackedStreamer {
+            platform: old_streamer.platform.clone(),
+            user_id: old_streamer.user_id.clone(),
+            custom_name: old_streamer.custom_username.clone(),
+            group: group_name,
+            priority,
+            labels: HashMap::new(),
+            source: StreamerSource::Manual,
+            discovery_rule_id: None,
+            created_at: Utc::now(),
+        };
+
+        // Insert the streamer
+        store.add_tracked_streamer(&tracked_streamer).await?;
 
         println!(
             "Migrated: {} on {}",
