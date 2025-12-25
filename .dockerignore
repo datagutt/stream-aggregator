@@ -1,0 +1,42 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+docs/
+.serena/
+
+# Build artifacts
+target/
+*.db
+*.db-shm
+*.db-wal
+data/
+
+# IDE/Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Development files
+docker-compose.yml
+.env
+.env.local
+config.toml
+
+# CI/CD
+.github/
+
+# Legacy/Reference
+lsnd/
+
+# Test/Example files
+examples/

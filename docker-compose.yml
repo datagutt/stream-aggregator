@@ -1,0 +1,57 @@
+# StreamAggregator - Docker Compose
+# For local development and testing
+#
+# Usage:
+#   docker-compose up -d          # Start in background
+#   docker-compose logs -f        # View logs
+#   docker-compose down           # Stop and remove containers
+#   docker-compose down -v        # Stop and remove data volume
+
+version: '3.8'
+
+services:
+  stream-aggregator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime  # Use the default SQLite build
+    container_name: stream-aggregator
+    ports:
+      - "${PORT:-8080}:8080"
+    volumes:
+      # Persistent SQLite database
+      - stream-data:/data
+      # Optional: Mount config file (uncomment to use)
+      # - ./config.toml:/app/config.toml:ro
+    environment:
+      # Server Configuration
+      HOST: "0.0.0.0"
+      PORT: "8080"
+      RUST_LOG: "${RUST_LOG:-info}"
+
+      # Storage Configuration
+      STORE_BACKEND: "diesel"
+      DATABASE_URL: "/data/streams.db"
+
+      # Authentication (optional)
+      # API_KEYS: "${API_KEYS:-}"
+      # REQUIRE_AUTH_ALL: "${REQUIRE_AUTH_ALL:-false}"
+
+      # Scheduler Configuration
+      SCRAPE_INTERVAL_SECS: "${SCRAPE_INTERVAL_SECS:-300}"
+
+      # Provider Configuration
+      # Twitch requires credentials
+      TWITCH_CLIENT_ID: "${TWITCH_CLIENT_ID:-}"
+      TWITCH_CLIENT_SECRET: "${TWITCH_CLIENT_SECRET:-}"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  stream-data:
+    driver: local

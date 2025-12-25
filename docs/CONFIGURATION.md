@@ -1,6 +1,6 @@
-# Configuration and Storage Design
+# Configuration Guide
 
-This document details the configuration system and storage backends for StreamAggregator.
+This document explains how to configure StreamAggregator using TOML configuration files and environment variables.
 
 ## Configuration System
 
@@ -8,145 +8,49 @@ This document details the configuration system and storage backends for StreamAg
 
 StreamAggregator uses a layered configuration system with the following priority (highest to lowest):
 
-1. **Command-line arguments**
-2. **Environment variables**
-3. **Configuration file** (TOML)
-4. **Default values**
+1. **Command-line arguments** - Highest priority
+2. **Environment variables** - Override config file
+3. **Configuration file** (TOML) - Base configuration
+4. **Default values** - Fallback defaults
 
-### Configuration File Format
+This means you can set defaults in `config.toml`, override with environment variables, and further override with CLI flags.
+
+## Using Configuration Files
+
+### Basic config.toml Example
+
+Create a `config.toml` file in your project directory:
 
 ```toml
 # config.toml - StreamAggregator Configuration
 
-# =============================================================================
-# Server Configuration
-# =============================================================================
 [server]
-# Host to bind to
 host = "0.0.0.0"
-# HTTP port
 port = 8080
-# Number of worker threads (0 = auto-detect based on CPU cores)
-workers = 0
 
-[server.tls]
-# Enable HTTPS
-enabled = false
-# Path to TLS certificate
-cert_path = "/etc/ssl/certs/server.crt"
-# Path to TLS private key
-key_path = "/etc/ssl/private/server.key"
-
-[server.cors]
-# Allowed origins (use ["*"] for any)
-allowed_origins = ["*"]
-# Allowed methods
-allowed_methods = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-# Max age for preflight cache (seconds)
-max_age = 86400
-
-# =============================================================================
-# API Configuration
-# =============================================================================
-[api]
-# Base path for all API endpoints
-base_path = "/api/v1"
-# Enable OpenAPI documentation endpoint
-enable_docs = true
-# Docs endpoint path
-docs_path = "/docs"
-
-[api.rate_limit]
-# Requests per window per IP
-requests_per_window = 100
-# Window duration in seconds
-window_seconds = 60
-# Burst size
-burst_size = 20
-# Enable rate limiting
-enabled = true
-
-[api.auth]
-# Enable API authentication
-enabled = false
-# Authentication method: "api_key" or "jwt"
-method = "api_key"
-# API keys (if method = "api_key")
+[auth]
+# API keys for authentication (empty = public mode)
 api_keys = []
-# JWT secret (if method = "jwt")
-# jwt_secret = ""
+# Require authentication for all requests (false = public reads)
+require_all = false
 
-# =============================================================================
-# Scraping Configuration
-# =============================================================================
-[scraping]
-# Default interval between scrapes (seconds)
-default_interval_secs = 300
-# Stagger requests to avoid API bursts
-stagger_requests = true
-# Maximum concurrent requests across all providers
-max_concurrent_requests = 50
-# Request timeout (seconds)
-request_timeout_secs = 30
-# Retry failed requests
-retry_failed = true
-# Maximum retry attempts
-max_retries = 3
-# Retry backoff multiplier
-retry_backoff_multiplier = 2.0
+[scheduler]
+# Scrape interval in seconds (default: 5 minutes)
+interval_secs = 300
+# Maximum concurrent scrape tasks
+max_concurrent = 10
 
-[scraping.circuit_breaker]
-# Enable circuit breaker for failing providers
-enabled = true
-# Failure threshold before opening circuit
-failure_threshold = 5
-# Time to wait before attempting recovery (seconds)
-recovery_timeout_secs = 60
-
-# =============================================================================
-# Storage Configuration
-# =============================================================================
 [store]
-# Storage backend: "memory", "diesel" (formerly "sqlite" or "postgres")
-# When using "diesel", the database type is determined by the connection URL
+# Storage backend: "memory" or "diesel"
 backend = "diesel"
-
-# Database URL for Diesel ORM
-# SQLite example: "stream_aggregator.db" or "/path/to/database.db"
-# PostgreSQL example: "postgres://user:password@localhost:5432/stream_aggregator"
-# The URL format determines which database backend Diesel uses
+# Database path (SQLite) or URL (PostgreSQL)
 database_url = "stream_aggregator.db"
 
-# Note: Diesel automatically handles:
-# - Connection pooling (r2d2)
-# - Migrations (embedded, runs on startup)
-# - Type-safe queries
-# - Support for both SQLite and PostgreSQL with the same code
-
-# =============================================================================
-# Discovery Configuration
-# =============================================================================
-[discovery]
-# Enable automatic streamer discovery
-enabled = false
-# Default discovery interval (seconds)
-default_interval_secs = 600
-# Maximum streamers to track from discovery (per rule)
-max_streamers_per_rule = 100
-# Auto-remove streamers that haven't been live in X days (0 = never)
-auto_remove_inactive_days = 0
-# Protect manually added streamers from auto-removal
-protect_manual_streamers = true
-
-# =============================================================================
-# Platform Provider Configurations
-# =============================================================================
+# Platform providers
 [providers.twitch]
 enabled = true
-client_id = ""
-client_secret = ""
-# Override default rate limits (optional)
-# rate_limit_requests_per_minute = 800
+client_id = "your_twitch_client_id"
+client_secret = "your_twitch_client_secret"
 
 [providers.youtube]
 enabled = true
@@ -154,15 +58,11 @@ enabled = true
 [providers.kick]
 enabled = true
 
-[providers.tiktok]
-enabled = true
-
 [providers.dlive]
 enabled = true
 
 [providers.trovo]
 enabled = true
-client_id = ""
 
 [providers.guac]
 enabled = true
@@ -172,39 +72,173 @@ enabled = true
 
 [providers.robotstreamer]
 enabled = true
+```
 
-[providers.brime]
+### Using config.toml Locally
+
+```bash
+# Run with config.toml in current directory
+cargo run
+
+# Or specify config file path
+cargo run -- --config /path/to/config.toml
+```
+
+### Using config.toml with Docker
+
+**Option 1: Mount as read-only volume (recommended)**
+
+```bash
+# docker-compose.yml
+services:
+  stream-aggregator:
+    build: .
+    volumes:
+      - ./config.toml:/app/config.toml:ro  # Read-only mount
+      - stream-data:/data
+```
+
+```bash
+# Or with docker run
+docker run -v $(pwd)/config.toml:/app/config.toml:ro stream-aggregator
+```
+
+**Option 2: Copy into image during build**
+
+```dockerfile
+# Custom Dockerfile
+FROM stream-aggregator:latest
+COPY config.toml /app/config.toml
+CMD ["stream-aggregator", "--config", "/app/config.toml"]
+```
+
+### Advanced Configuration Examples
+
+#### Production Configuration with Authentication
+
+```toml
+# config.production.toml
+[server]
+host = "0.0.0.0"
+port = 8080
+
+[auth]
+# Strong API keys for production
+api_keys = [
+    "prod-key-a1b2c3d4e5f6",
+    "admin-key-x9y8z7w6v5u4"
+]
+# Require auth for all endpoints (including GET requests)
+require_all = true
+
+[scheduler]
+interval_secs = 180  # 3 minutes for faster updates
+max_concurrent = 20
+
+[store]
+backend = "diesel"
+database_url = "/data/streams.db"
+
+[providers.twitch]
+enabled = true
+client_id = "your_production_twitch_id"
+client_secret = "your_production_secret"
+
+[providers.youtube]
 enabled = true
 
-# =============================================================================
-# Observability Configuration
-# =============================================================================
-[observability]
-# Log level: "trace", "debug", "info", "warn", "error"
-log_level = "info"
-# Log format: "json", "pretty"
-log_format = "pretty"
-
-[observability.metrics]
-# Enable Prometheus metrics endpoint
+[providers.kick]
 enabled = true
-# Metrics endpoint path
-path = "/metrics"
+```
 
-[observability.tracing]
-# Enable distributed tracing
-enabled = false
-# OTLP endpoint for trace export
-otlp_endpoint = ""
+Usage:
+```bash
+docker run -v ./config.production.toml:/app/config.toml:ro stream-aggregator
+```
 
-# =============================================================================
-# Health Check Configuration
-# =============================================================================
-[health]
-# Health check endpoint path
-path = "/health"
-# Include detailed provider status
-detailed = true
+#### Multi-Platform Configuration
+
+```toml
+# config.multi-platform.toml
+
+[server]
+host = "0.0.0.0"
+port = 8080
+
+[auth]
+api_keys = []  # Public access
+require_all = false
+
+[scheduler]
+interval_secs = 300
+max_concurrent = 15
+
+[store]
+backend = "diesel"
+database_url = "/data/streams.db"
+
+# Enable all platforms
+[providers.twitch]
+enabled = true
+client_id = "twitch_id"
+client_secret = "twitch_secret"
+
+[providers.youtube]
+enabled = true
+
+[providers.kick]
+enabled = true
+
+[providers.dlive]
+enabled = true
+
+[providers.trovo]
+enabled = true
+
+[providers.guac]
+enabled = true
+
+[providers.angelthump]
+enabled = true
+
+[providers.robotstreamer]
+enabled = true
+```
+
+#### Development Configuration
+
+```toml
+# config.dev.toml
+[server]
+host = "127.0.0.1"  # Localhost only
+port = 3000
+
+[auth]
+api_keys = ["dev-test-key"]
+require_all = false
+
+[scheduler]
+interval_secs = 60  # Fast updates for testing
+max_concurrent = 5
+
+[store]
+backend = "memory"  # In-memory for fast iteration
+
+[providers.twitch]
+enabled = true
+client_id = "dev_client_id"
+client_secret = "dev_client_secret"
+
+[providers.youtube]
+enabled = false  # Disable for faster dev
+
+[providers.kick]
+enabled = true
+```
+
+Usage:
+```bash
+cargo run -- --config config.dev.toml
 ```
 
 ### Environment Variables
