@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Result};
 use chrono::Utc;
 use clap::Parser;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use sqlx::sqlite::SqlitePool;
 use std::collections::{HashMap, HashSet};
 use std::fs;
@@ -30,7 +30,7 @@ struct Args {
     stats: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 struct OldStreamer {
     platform: String,
     #[serde(rename = "userId")]
@@ -332,34 +332,27 @@ async fn main() -> Result<()> {
             None
         };
 
-        // Create labels map with all available metadata
-        let mut labels: HashMap<String, serde_json::Value> = HashMap::new();
-        if let Some(rank) = &old_streamer.featured_rank {
-            labels.insert("featured_rank".to_string(), serde_json::json!(rank));
-        }
-        if let Some(team) = &old_streamer.team {
-            // Also store team in labels for richer querying
-            labels.insert("team".to_string(), serde_json::json!(team));
-        }
-        labels.insert("migrated_from".to_string(), serde_json::json!("lsnd"));
+        // Team/group is outdated for Twitch, only keep for other platforms
+        let group_name = if old_streamer.platform.to_lowercase() == "twitch" {
+            None
+        } else {
+            old_streamer.team.as_ref()
+        };
 
-        let labels_json = serde_json::to_string(&labels)?;
-
-        // Insert the streamer
+        // Insert the streamer (labels are empty - featured_rank is stored as priority)
         sqlx::query(
             r#"
             INSERT INTO tracked_streamers (
                 platform, user_id, custom_name, group_name, priority,
                 labels, source, discovery_rule_id, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, 'migrated', NULL, ?)
+            ) VALUES (?, ?, ?, ?, ?, '{}', 'manual', NULL, ?)
             "#,
         )
         .bind(&old_streamer.platform)
         .bind(&old_streamer.user_id)
         .bind(&old_streamer.custom_username)
-        .bind(&old_streamer.team)
+        .bind(&group_name)
         .bind(&priority)
-        .bind(&labels_json)
         .bind(Utc::now().to_rfc3339())
         .execute(&pool)
         .await?;
