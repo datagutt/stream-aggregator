@@ -206,13 +206,14 @@ See [AGENTS.md](AGENTS.md) for build commands and [docs/DEVELOPMENT.md](docs/DEV
 
 ## Migrating from Node.js
 
-API-compatible with the [original implementation](https://github.com/livestreamnorge/lsnd). Simply point your integrations to the new deployment URL.
+This is a rewrite of the [original Node.js implementation](https://github.com/livestreamnorge/lsnd) with a similar API design but improved architecture.
 
 **Benefits:**
-- 10-20x faster scraping
-- Lower memory (~50MB vs ~200MB)
-- Type safety and reliability
-- Persistent storage
+- Improved performance and efficiency
+- Type safety with Rust
+- Persistent storage with migrations
+- Better error handling
+- Easier deployment with Docker
 
 ## License
 
