@@ -7,7 +7,7 @@ const CONFIG = {
 	port: parseInt(process.env.TIKTOK_BRIDGE_PORT || '3456', 10),
 	maxConcurrentRequests: parseInt(process.env.TIKTOK_MAX_CONCURRENT || '10', 10),
 	requestTimeoutMs: parseInt(process.env.TIKTOK_REQUEST_TIMEOUT || '30000', 10),
-	connectionCacheTtlMs: parseInt(process.env.TIKTOK_CONNECTION_TTL || '300000', 10),
+	connectionTimeoutMs: parseInt(process.env.TIKTOK_CONNECTION_TIMEOUT || '15000', 10),
 	cleanupIntervalMs: 30000,
 	responseCacheTtlMs: parseInt(process.env.TIKTOK_RESPONSE_CACHE_TTL || '30000', 10),
 };
@@ -27,15 +27,25 @@ function parseError(err) {
 	const message = err?.message || err?.toString() || 'Unknown error';
 	const name = err?.name || err?.constructor?.name || 'Error';
 
-	if (message.includes('LIVE has ended') || message.includes('not found') || message.includes('isn\'t online')) {
+	// Check for nested errors array (FetchIsLiveError contains multiple attempts)
+	if (err?.errors && Array.isArray(err.errors)) {
+		for (const subErr of err.errors) {
+			const subMsg = subErr?.message || '';
+			if (subMsg.includes('user_not_found') || subMsg.includes('19881007')) {
+				return { code: ErrorCode.USER_NOT_FOUND, message: subMsg };
+			}
+		}
+	}
+
+	if (message.includes('LIVE has ended') || message.includes('isn\'t online')) {
 		return { code: ErrorCode.USER_OFFLINE, message };
 	}
 
-	if (name === 'UserOfflineError') {
+	if (name === 'UserOfflineError' || name === 'FetchIsLiveError') {
 		return { code: ErrorCode.USER_OFFLINE, message };
 	}
 
-	if (name === 'InvalidUniqueIdError' || message.includes('Invalid uniqueId')) {
+	if (name === 'InvalidUniqueIdError' || message.includes('Invalid uniqueId') || message.includes('user_not_found')) {
 		return { code: ErrorCode.USER_NOT_FOUND, message };
 	}
 
@@ -168,18 +178,6 @@ class TikTokBridge {
 		}, CONFIG.cleanupIntervalMs);
 	}
 
-	async createConnection(username, options = {}) {
-		const connectionOptions = {
-			processInitialData: false,
-			fetchRoomInfoOnConnect: false,
-			enableExtendedGiftInfo: false,
-			requestPollingIntervalMs: 1000,
-			...options,
-		};
-
-		return new TikTokLiveConnection(username, connectionOptions);
-	}
-
 	async getRoomInfo(username, options = {}) {
 		this.stats.totalRequests++;
 
@@ -211,19 +209,58 @@ class TikTokBridge {
 	}
 
 	async fetchRoomInfoInternal(username, options = {}) {
-		try {
-			const connection = await this.createConnection(username, options);
+		const connectionOptions = {
+			processInitialData: true,
+			fetchRoomInfoOnConnect: true,
+			enableExtendedGiftInfo: false,
+			requestPollingIntervalMs: 1000,
+			...options,
+		};
 
-			let roomInfo = null;
-			let isLive = false;
+		const connection = new TikTokLiveConnection(username, connectionOptions);
 
-			try {
-				roomInfo = await connection.fetchRoomInfo();
-			} catch (err) {
-				const parsedErr = parseError(err);
+		return new Promise((resolve) => {
+			let resolved = false;
+			let connectionTimeout = null;
 
-				if (parsedErr.code === ErrorCode.USER_OFFLINE || parsedErr.code === ErrorCode.USER_NOT_FOUND) {
-					return {
+			const cleanup = () => {
+				if (connectionTimeout) {
+					clearTimeout(connectionTimeout);
+					connectionTimeout = null;
+				}
+				try {
+					connection.disconnect();
+				} catch (e) {
+					// Ignore disconnect errors
+				}
+			};
+
+			const resolveOnce = (result) => {
+				if (resolved) return;
+				resolved = true;
+				cleanup();
+				resolve(result);
+			};
+
+			// Set connection timeout
+			connectionTimeout = setTimeout(() => {
+				console.log(`[${username}] Connection timeout`);
+				resolveOnce({
+					success: false,
+					error: 'Connection timeout',
+					error_code: ErrorCode.TIMEOUT,
+					retry_after: null,
+				});
+			}, CONFIG.connectionTimeoutMs);
+
+			// Handle successful connection
+			connection.on('connected', () => {
+				const roomInfo = connection.roomInfo;
+				const data = roomInfo?.data;
+
+				if (!data || typeof data !== 'object') {
+					console.log(`[${username}] Connected but no room data`);
+					resolveOnce({
 						success: true,
 						data: {
 							username: username,
@@ -238,66 +275,82 @@ class TikTokBridge {
 							create_time: null,
 							bio: null,
 						},
-					};
+					});
+					return;
 				}
 
-				return {
+				// status: 2 = live, 4 = offline
+				const isLive = data.status === 2;
+
+				// Extract stream URL - prefer FLV HD
+				let streamUrl = null;
+				if (data.stream_url) {
+					streamUrl = data.stream_url.flv_pull_url?.HD1 ||
+						data.stream_url.flv_pull_url?.SD2 ||
+						data.stream_url.flv_pull_url?.SD1 ||
+						data.stream_url.rtmp_pull_url ||
+						null;
+				}
+
+				resolveOnce({
+					success: true,
+					data: {
+						live: isLive,
+						username: username,
+						display_name: data.owner?.nickname || data.owner?.display_id || username,
+						avatar_url: data.owner?.avatar_large?.url_list?.[0] ||
+							data.owner?.avatar_medium?.url_list?.[0] ||
+							data.owner?.avatar_thumb?.url_list?.[0] || null,
+						thumbnail_url: data.cover?.url_list?.[0] || null,
+						viewer_count: data.user_count || null,
+						title: data.title || null,
+						stream_url: streamUrl,
+						room_id: data.id_str || (data.id ? String(data.id) : null),
+						create_time: data.create_time || null,
+						bio: data.owner?.bio_description || null,
+					},
+				});
+			});
+
+			// Handle errors
+			connection.on('error', (err) => {
+				console.error(`[${username}] Connection error:`, err.message || err);
+			});
+
+			// Start connection
+			connection.connect().catch((err) => {
+				console.error(`[${username}] Connect failed:`, err.message || err);
+				const parsedErr = parseError(err);
+
+				// User offline or not found - return success with live=false
+				if (parsedErr.code === ErrorCode.USER_OFFLINE || parsedErr.code === ErrorCode.USER_NOT_FOUND) {
+					resolveOnce({
+						success: true,
+						data: {
+							username: username,
+							display_name: username,
+							avatar_url: null,
+							live: false,
+							title: null,
+							viewer_count: null,
+							thumbnail_url: null,
+							stream_url: null,
+							room_id: null,
+							create_time: null,
+							bio: null,
+						},
+					});
+					return;
+				}
+
+				resolveOnce({
 					success: false,
 					error: parsedErr.message,
 					error_code: parsedErr.code,
 					retry_after: parsedErr.retryAfter || null,
-				};
-			}
-
-			if (!roomInfo || !roomInfo.data) {
-				return {
-					success: true,
-					data: {
-						username: username,
-						display_name: username,
-						avatar_url: null,
-						live: false,
-						title: null,
-						viewer_count: null,
-						thumbnail_url: null,
-						stream_url: null,
-						room_id: null,
-						create_time: null,
-						bio: null,
-					},
-				};
-			}
-
-			const data = roomInfo.data;
-			isLive = data.status === 2;
-
-			return {
-				success: true,
-				data: {
-					live: isLive,
-					username: username,
-					display_name: data.owner?.display_id || data.owner?.nickname || username,
-					avatar_url: data.owner?.avatar_large?.url_list?.[0] ||
-						data.owner?.avatar_medium?.url_list?.[0] ||
-						data.owner?.avatar_thumb?.url_list?.[0] || null,
-					thumbnail_url: data.cover?.url_list?.[0] || null,
-					viewer_count: data.user_count || data.like_count || null,
-					title: data.title || null,
-					stream_url: data.stream_url?.hls_pull_url || null,
-					room_id: data.id_str || String(data.id) || null,
-					create_time: data.create_time || null,
-					bio: data.owner?.bio_description || null,
-				},
-			};
-		} catch (error) {
-			const parsedErr = parseError(error);
-			return {
-				success: false,
-				error: parsedErr.message,
-				error_code: parsedErr.code,
-				retry_after: parsedErr.retryAfter || null,
-			};
-		}
+				});
+			});
+		});
 	}
 
 	async getBatchRoomInfo(usernames, options = {}) {

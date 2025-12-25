@@ -235,9 +235,18 @@ impl TikTokProvider {
             ));
         }
 
-        let room_response: RoomInfoResponse = response.json().await.map_err(|e| {
-            ProviderError::ParseError(format!("Failed to parse bridge response: {}", e))
+        let response_text = response.text().await.map_err(|e| {
+            ProviderError::ParseError(format!("Failed to read bridge response: {}", e))
         })?;
+
+        let room_response: RoomInfoResponse =
+            serde_json::from_str(&response_text).map_err(|e| {
+                error!(
+                    "Failed to parse bridge response for {}: {} - body: {}",
+                    username, e, response_text
+                );
+                ProviderError::ParseError(format!("Failed to parse bridge response: {}", e))
+            })?;
 
         if !room_response.success && room_response.data.is_none() {
             let error_code = TikTokErrorCode::from(room_response.error_code.as_deref());
@@ -245,11 +254,26 @@ impl TikTokProvider {
                 .error
                 .unwrap_or_else(|| "Unknown error".to_string());
 
+            warn!(
+                "TikTok bridge error for {}: {} (code: {:?})",
+                username, error_msg, error_code
+            );
+
             return match error_code {
                 TikTokErrorCode::UserNotFound => {
                     Err(ProviderError::StreamerNotFound(username.to_string()))
                 }
                 TikTokErrorCode::RateLimited => Err(ProviderError::RateLimitExceeded),
+                TikTokErrorCode::UserOffline => {
+                    // User offline is not an error - return success with is_live = false
+                    Ok(RoomInfoResponse {
+                        success: true,
+                        data: Some(crate::models::TikTokStreamData::offline(username)),
+                        error: None,
+                        error_code: None,
+                        retry_after: None,
+                    })
+                }
                 _ => Err(ProviderError::HttpError(error_msg)),
             };
         }
