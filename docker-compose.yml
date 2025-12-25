@@ -11,10 +11,15 @@ version: '3.8'
 
 services:
   stream-aggregator:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: runtime  # Use the default SQLite build
+    # Option 1: Use pre-built image from GitHub Container Registry (recommended)
+    image: ghcr.io/yourusername/stream-aggregator:latest
+    
+    # Option 2: Build from source (uncomment below and comment out 'image' above)
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
+    #   target: runtime
+    
     container_name: stream-aggregator
     ports:
       - "${PORT:-8080}:8080"

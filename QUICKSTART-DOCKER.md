@@ -7,11 +7,65 @@ Get StreamAggregator running in 5 minutes with Docker.
 - Docker 20.10+ installed
 - Docker Compose (comes with Docker Desktop)
 
-## 1. Clone and Setup
+## Fast Start: Using Pre-built Image
+
+The fastest way to get started is using our pre-built Docker images from GitHub Container Registry:
+
+### 1. Create docker-compose.yml
+
+```yaml
+version: '3.8'
+
+services:
+  stream-aggregator:
+    image: ghcr.io/datagutt/stream-aggregator:latest
+    container_name: stream-aggregator
+    ports:
+      - "8080:8080"
+    volumes:
+      - stream-data:/data
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8080
+      - RUST_LOG=info
+      - STORE_BACKEND=diesel
+      - DATABASE_URL=/data/streams.db
+      - TWITCH_CLIENT_ID=${TWITCH_CLIENT_ID}
+      - TWITCH_CLIENT_SECRET=${TWITCH_CLIENT_SECRET}
+    restart: unless-stopped
+
+volumes:
+  stream-data:
+```
+
+### 2. Create .env file
+
+```bash
+cat > .env << EOF
+TWITCH_CLIENT_ID=your_twitch_client_id
+TWITCH_CLIENT_SECRET=your_twitch_client_secret
+EOF
+```
+
+### 3. Start service
+
+```bash
+docker-compose up -d
+```
+
+That's it! Skip to "Verify Running" section below.
+
+---
+
+## Build from Source (Alternative)
+
+If you want to build from source instead of using pre-built images:
+
+### 1. Clone and Setup
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/stream-aggregator.git
+git clone https://github.com/datagutt/stream-aggregator.git
 cd stream-aggregator
 
 # Copy environment template

@@ -44,11 +44,65 @@ StreamAggregator is designed for flexible, production-ready deployments using **
 - Docker 20.10+
 - Docker Compose (optional, recommended)
 
-### Option 1: Docker Compose (Recommended)
+### Using Pre-built Image from GitHub Container Registry
+
+The easiest way to get started is using our pre-built images:
+
+```bash
+# Pull latest image
+docker pull ghcr.io/datagutt/stream-aggregator:latest
+
+# Run directly
+docker run -d \
+  --name stream-aggregator \
+  -p 8080:8080 \
+  -v stream-data:/data \
+  -e DATABASE_URL=/data/streams.db \
+  -e TWITCH_CLIENT_ID=your_id \
+  -e TWITCH_CLIENT_SECRET=your_secret \
+  ghcr.io/datagutt/stream-aggregator:latest
+
+# Or use specific version
+docker pull ghcr.io/datagutt/stream-aggregator:v1.0.0
+```
+
+Available tags:
+- `latest` - Latest stable build from main branch
+- `v1.0.0` - Specific version tags
+- `main` - Latest commit on main branch
+- `develop` - Development branch (may be unstable)
+
+### Option 1: Docker Compose with Pre-built Image
+
+```yaml
+# docker-compose.yml
+services:
+  stream-aggregator:
+    image: ghcr.io/datagutt/stream-aggregator:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - stream-data:/data
+    environment:
+      - DATABASE_URL=/data/streams.db
+      - TWITCH_CLIENT_ID=${TWITCH_CLIENT_ID}
+      - TWITCH_CLIENT_SECRET=${TWITCH_CLIENT_SECRET}
+    restart: unless-stopped
+
+volumes:
+  stream-data:
+```
+
+Then simply:
+```bash
+docker-compose up -d
+```
+
+### Option 2: Build from Source (Docker Compose)
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/yourusername/stream-aggregator.git
+git clone https://github.com/datagutt/stream-aggregator.git
 cd stream-aggregator
 
 # 2. Create .env file for secrets
@@ -77,10 +131,16 @@ docker-compose logs -f
 curl http://localhost:8080/health
 ```
 
-### Option 2: Docker CLI
+### Option 3: Build from Source (Docker CLI)
+
+If you want to build from source instead of using pre-built images:
 
 ```bash
-# Build image
+# Clone repository
+git clone https://github.com/datagutt/stream-aggregator.git
+cd stream-aggregator
+
+# Build image locally
 docker build -t stream-aggregator .
 
 # Run with volume for persistence
@@ -126,9 +186,20 @@ DATABASE_URL=./data/streams.db diesel migration run
 
 ### Deployment Steps
 
+#### Option A: Using Pre-built Docker Image (Fastest)
+
+1. **Add New Resource** in Coolify dashboard
+   - Click "New Resource" → "Docker Image"
+   - Image: `ghcr.io/datagutt/stream-aggregator:latest`
+   - Port: `8080`
+
+2. Skip to step 3 (Configure environment variables)
+
+#### Option B: Build from Source (More Control)
+
 1. **Add New Resource** in Coolify dashboard
    - Click "New Resource" → "Public Repository"
-   - Enter repository URL: `https://github.com/yourusername/stream-aggregator`
+   - Enter repository URL: `https://github.com/datagutt/stream-aggregator`
 
 2. **Configure Build Settings**
    - Build Type: `Dockerfile`
@@ -419,7 +490,7 @@ curl -fsSL https://get.docker.com -o get-docker.sh
 sh get-docker.sh
 
 # 3. Clone repository
-git clone https://github.com/yourusername/stream-aggregator.git
+git clone https://github.com/datagutt/stream-aggregator.git
 cd stream-aggregator
 
 # 4. Create environment file
@@ -724,6 +795,6 @@ See [MIGRATION.md](./MIGRATION.md) for detailed migration guide.
 
 ## Support
 
-- Issues: [GitHub Issues](https://github.com/yourusername/stream-aggregator/issues)
+- Issues: [GitHub Issues](https://github.com/datagutt/stream-aggregator/issues)
 - Docs: [docs/](.)
 - Discord: [Join our community](#)

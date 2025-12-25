@@ -63,7 +63,7 @@ version = "0.1.0"
 edition = "2021"
 rust-version = "1.75"
 license = "MIT"
-repository = "https://github.com/yourusername/stream-aggregator"
+repository = "https://github.com/datagutt/stream-aggregator"
 
 [workspace.dependencies]
 # Async runtime
