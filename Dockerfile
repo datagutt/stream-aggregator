@@ -12,7 +12,7 @@
 # ============================================================================
 # Stage 1: Build
 # ============================================================================
-FROM rust:1.87-trixie AS builder
+FROM rust:1.92-trixie AS builder
 
 WORKDIR /app
 
@@ -76,7 +76,7 @@ CMD ["stream-aggregator"]
 # ============================================================================
 # Alternative: Build with libSQL support (for Turso)
 # ============================================================================
-FROM rust:1.87-trixie AS builder-libsql
+FROM rust:1.92-trixie AS builder-libsql
 
 WORKDIR /app
 
