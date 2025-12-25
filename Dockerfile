@@ -8,9 +8,6 @@
 #
 # Run with SQLite:
 #   docker run -p 8080:8080 -v ./data:/data -e DATABASE_URL=/data/streams.db stream-aggregator
-#
-# Run with Turso/libSQL:
-#   docker run -p 8080:8080 -e TURSO_URL=libsql://... -e TURSO_TOKEN=... stream-aggregator
 
 # ============================================================================
 # Stage 1: Build
@@ -117,8 +114,7 @@ COPY --from=builder-libsql /app/target/release/stream-aggregator /usr/local/bin/
 ENV HOST=0.0.0.0
 ENV PORT=8080
 ENV RUST_LOG=info
-ENV STORE_BACKEND=libsql
-# Set TURSO_URL and TURSO_TOKEN at runtime
+ENV STORE_BACKEND=diesel
 
 EXPOSE 8080
 
