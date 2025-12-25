@@ -9,16 +9,16 @@ use std::path::Path;
 pub struct AppConfig {
     #[serde(default)]
     pub server: ServerConfig,
-    
+
     #[serde(default)]
     pub auth: AuthSettings,
-    
+
     #[serde(default)]
     pub scheduler: SchedulerConfig,
-    
+
     #[serde(default)]
     pub providers: ProvidersConfig,
-    
+
     #[serde(default)]
     pub store: StoreConfig,
 }
@@ -56,7 +56,7 @@ impl Default for ServerConfig {
 pub struct AuthSettings {
     /// API keys for authentication (comma-separated in env var)
     pub api_keys: Vec<String>,
-    
+
     /// Require authentication for all requests (including reads)
     pub require_all: bool,
 }
@@ -75,7 +75,7 @@ impl Default for AuthSettings {
 pub struct SchedulerConfig {
     /// Scrape interval in seconds
     pub interval_secs: u64,
-    
+
     /// Maximum concurrent scrape tasks
     pub max_concurrent: usize,
 }
@@ -94,7 +94,7 @@ impl Default for SchedulerConfig {
 pub struct StoreConfig {
     /// Storage backend type ("memory", "sqlite", "postgres")
     pub backend: String,
-    
+
     /// Database connection URL (for sqlite/postgres)
     pub database_url: Option<String>,
 }
@@ -111,32 +111,32 @@ impl Default for StoreConfig {
 /// Provider configurations
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ProvidersConfig {
-	#[serde(default)]
-	pub twitch: TwitchProviderConfig,
-	
-	#[serde(default)]
-	pub youtube: YouTubeProviderConfig,
-	
-	#[serde(default)]
-	pub kick: KickProviderConfig,
-	
-	#[serde(default)]
-	pub dlive: DLiveProviderConfig,
-	
-	#[serde(default)]
-	pub trovo: TrovoProviderConfig,
-	
-	#[serde(default)]
-	pub guac: GuacProviderConfig,
-	
-	#[serde(default)]
-	pub angelthump: AngelThumpProviderConfig,
-	
-	#[serde(default)]
-	pub robotstreamer: RobotStreamerProviderConfig,
-	
-	#[serde(default)]
-	pub tiktok: TikTokProviderConfig,
+    #[serde(default)]
+    pub twitch: TwitchProviderConfig,
+
+    #[serde(default)]
+    pub youtube: YouTubeProviderConfig,
+
+    #[serde(default)]
+    pub kick: KickProviderConfig,
+
+    #[serde(default)]
+    pub dlive: DLiveProviderConfig,
+
+    #[serde(default)]
+    pub trovo: TrovoProviderConfig,
+
+    #[serde(default)]
+    pub guac: GuacProviderConfig,
+
+    #[serde(default)]
+    pub angelthump: AngelThumpProviderConfig,
+
+    #[serde(default)]
+    pub robotstreamer: RobotStreamerProviderConfig,
+
+    #[serde(default)]
+    pub tiktok: TikTokProviderConfig,
 }
 
 /// Twitch provider configuration
@@ -160,73 +160,75 @@ impl Default for TwitchProviderConfig {
 /// YouTube provider configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct YouTubeProviderConfig {
-	#[serde(default = "default_true")]
-	pub enabled: bool,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
 }
 
 /// Kick provider configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct KickProviderConfig {
-	#[serde(default = "default_true")]
-	pub enabled: bool,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
 }
 
 /// DLive provider configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct DLiveProviderConfig {
-	#[serde(default = "default_true")]
-	pub enabled: bool,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
 }
 
 /// Trovo provider configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TrovoProviderConfig {
-	#[serde(default = "default_true")]
-	pub enabled: bool,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
 }
 
 /// Guac provider configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct GuacProviderConfig {
-	#[serde(default = "default_true")]
-	pub enabled: bool,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
 }
 
 /// AngelThump provider configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AngelThumpProviderConfig {
-	#[serde(default = "default_true")]
-	pub enabled: bool,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
 }
 
 /// RobotStreamer provider configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct RobotStreamerProviderConfig {
-	#[serde(default = "default_true")]
-	pub enabled: bool,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
 }
 
 /// TikTok provider configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TikTokProviderConfig {
-	#[serde(default = "default_true")]
-	pub enabled: bool,
-	pub node_path: Option<String>,
-	pub bridge_path: Option<String>,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+    /// URL of the TikTok bridge HTTP server (default: http://127.0.0.1:3456)
+    pub bridge_url: Option<String>,
+    /// Path to the Node.js bridge directory (default: auto-detected)
+    pub bridge_path: Option<String>,
 }
 
 impl Default for TikTokProviderConfig {
-	fn default() -> Self {
-		Self {
-			enabled: true,
-			node_path: None,
-			bridge_path: None,
-		}
-	}
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            bridge_url: None,
+            bridge_path: None,
+        }
+    }
 }
 
 fn default_true() -> bool {
-	true
+    true
 }
 
 impl AppConfig {

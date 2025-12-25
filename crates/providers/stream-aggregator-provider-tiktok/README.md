@@ -1,287 +1,148 @@
-# TikTok Platform Provider
+# TikTok Provider
 
-Provides integration with TikTok Live using a Node.js bridge wrapper around the [tiktok-live-connector](https://github.com/zerodytrash/TikTok-Live-Connector) package.
+TikTok Live stream provider for StreamAggregator.
 
 ## Architecture
 
-Unlike other providers that use HTTP APIs, TikTok requires a WebSocket-based connection to their Webcast push service. Since the best implementation of this protocol is in Node.js (tiktok-live-connector), this provider uses a bridge architecture:
+This provider uses a **Node.js bridge** to access TikTok Live data via the
+[tiktok-live-connector](https://github.com/zerodytrash/TikTok-Live-Connector) library.
 
 ```
-┌─────────────────────┐
-│   Rust Provider     │
-│  (TikTokProvider)   │
-└──────────┬──────────┘
-           │ JSON over stdin/stdout
-           ▼
-┌─────────────────────┐
-│   Node.js Bridge    │
-│    (index.js)       │
-└──────────┬──────────┘
-           │ WebSocket + HTTP
-           ▼
-┌─────────────────────┐
-│   TikTok APIs       │
-│  (Webcast Service)  │
-└─────────────────────┘
+┌─────────────────────┐     HTTP      ┌─────────────────────┐
+│   Rust Provider     │◄─────────────►│   Node.js Bridge    │
+│   (TikTokProvider)  │   localhost   │   (index.js)        │
+└─────────────────────┘               └─────────────────────┘
+                                              │
+                                              ▼
+                                      ┌─────────────────────┐
+                                      │   TikTok Live API   │
+                                      │   (via connector)   │
+                                      └─────────────────────┘
 ```
 
-## Prerequisites
+## How it Works
 
-- **Node.js**: Version 18.0.0 or higher
-- **npm**: For installing dependencies
+1. When `TikTokProvider::new()` is called, it automatically spawns the Node.js bridge process
+2. The bridge runs as an HTTP server on `127.0.0.1:3456` (configurable)
+3. The Rust provider communicates with the bridge via HTTP requests
+4. When the provider is dropped, the bridge process is automatically terminated
 
-## Installation
-
-1. Navigate to the bridge directory:
-```bash
-cd crates/providers/stream-aggregator-provider-tiktok/nodejs-bridge
-```
-
-2. Install dependencies:
-```bash
-npm install
-```
-
-This will install `tiktok-live-connector` and its dependencies.
-
-## Usage
-
-### Basic Configuration
-
-The TikTok provider is enabled by default. In your `config.toml`:
+## Configuration
 
 ```toml
 [providers.tiktok]
 enabled = true
+# Optional: Custom bridge URL (default: http://127.0.0.1:3456)
+bridge_url = "http://127.0.0.1:3456"
+# Optional: Custom path to the nodejs-bridge directory
+bridge_path = "/path/to/nodejs-bridge"
 ```
 
-### Advanced Configuration
+## Bridge API
 
-You can customize the Node.js executable and bridge script paths:
+The Node.js bridge exposes the following HTTP endpoints:
 
-```toml
-[providers.tiktok]
-enabled = true
-node_path = "/usr/bin/node"  # Optional: custom Node.js path
-bridge_path = "/custom/path/to/index.js"  # Optional: custom bridge script path
-```
-
-### Environment Variables
-
-```bash
-# Optional: Custom Node.js path
-export NODE_PATH=/usr/bin/node
-```
-
-## How It Works
-
-### 1. Process Lifecycle
-
-When the provider is initialized:
-1. The Rust code spawns a Node.js child process running `nodejs-bridge/index.js`
-2. The bridge process stays alive for the lifetime of the provider
-3. Communication happens via JSON-over-stdio (stdin/stdout)
-
-### 2. Communication Protocol
-
-#### Request Format
-The Rust provider sends JSON commands to the bridge's stdin:
+### GET /health
+Health check endpoint.
 
 ```json
-{"action": "get_room_info", "username": "someuser"}
+{
+  "status": "ok",
+  "uptime": 12345,
+  "activeConnections": 0,
+  "totalRequests": 100,
+  "cacheSize": 10
+}
 ```
 
-Available actions:
-- `get_room_info` - Fetch stream information for a username
-- `ping` - Health check
+### POST /room
+Get room info for a single user.
 
-#### Response Format
-The bridge responds with JSON on stdout:
+Request:
+```json
+{
+  "username": "tiktok_user"
+}
+```
 
+Response:
 ```json
 {
   "success": true,
   "data": {
     "live": true,
-    "name": "someuser",
-    "avatar": "https://...",
+    "username": "tiktok_user",
+    "display_name": "TikTok User",
+    "avatar_url": "https://...",
     "thumbnail_url": "https://...",
-    "viewers": 1234,
-    "title": "Stream title"
+    "viewer_count": 1234,
+    "title": "Stream Title",
+    "room_id": "7123456789",
+    "stream_url": "https://...",
+    "bio": "User bio",
+    "create_time": 1234567890
   }
 }
 ```
 
-Error response:
+### POST /batch
+Get room info for multiple users.
+
+Request:
 ```json
 {
-  "success": false,
-  "error": "Error message"
+  "usernames": ["user1", "user2", "user3"]
 }
 ```
 
-### 3. Stream Data Retrieval
-
-The tiktok-live-connector package:
-1. Fetches the room ID from TikTok's web interface
-2. Connects to TikTok's Webcast push service
-3. Retrieves real-time stream information including:
-   - Live status
-   - Viewer count
-   - Stream title
-   - User avatar
-   - Thumbnail image
-
-## Rate Limiting
-
-The provider is configured with conservative rate limits:
-
-- **Requests per minute**: 30
-- **Burst size**: 5
-
-This prevents overwhelming TikTok's services and reduces the chance of being rate-limited.
-
-## Error Handling
-
-The provider handles several error scenarios:
-
-1. **Bridge Not Found**: If the Node.js bridge script doesn't exist
-2. **Node.js Not Found**: If Node.js is not installed or not in PATH
-3. **Bridge Crash**: If the Node.js process exits unexpectedly
-4. **Parse Errors**: If the bridge returns invalid JSON
-5. **TikTok API Errors**: If TikTok rejects the request
-
-All errors are propagated as `ProviderError` variants.
-
-## Health Checks
-
-The provider implements health checks via the `ping` action:
-
-```rust
-let status = provider.health_check().await;
-match status {
-    HealthStatus::Healthy => println!("TikTok provider is working"),
-    HealthStatus::Unhealthy => println!("TikTok provider has issues"),
+Response:
+```json
+{
+  "success": true,
+  "results": [
+    { "username": "user1", "success": true, "data": { ... } },
+    { "username": "user2", "success": true, "data": { ... } },
+    { "username": "user3", "success": false, "error": "...", "error_code": "user_offline" }
+  ],
+  "stats": {
+    "total": 3,
+    "successful": 2,
+    "failed": 1,
+    "duration_ms": 1234
+  }
 }
 ```
 
-## Troubleshooting
+## Error Codes
 
-### Bridge Process Won't Start
+The bridge returns structured error codes:
 
-**Problem**: Error about bridge not found
+- `user_not_found` - User does not exist
+- `user_offline` - User exists but is not live
+- `rate_limited` - Rate limit exceeded
+- `invalid_response` - Invalid response from TikTok
+- `timeout` - Request timeout
+- `network_error` - Network connectivity issue
+- `captcha_required` - TikTok requires captcha verification
+- `unknown_error` - Unknown error
 
-**Solution**: Make sure you ran `npm install` in the `nodejs-bridge` directory
+## Requirements
 
-```bash
-cd crates/providers/stream-aggregator-provider-tiktok/nodejs-bridge
-npm install
-```
-
-### Node.js Not Found
-
-**Problem**: Error about Node.js executable not found
-
-**Solutions**:
-1. Install Node.js 18+ from https://nodejs.org
-2. Add Node.js to your PATH
-3. Or specify custom path in config:
-
-```toml
-[providers.tiktok]
-node_path = "/path/to/node"
-```
-
-### Bridge Returns Errors
-
-**Problem**: Bridge successfully starts but returns errors for all requests
-
-**Possible causes**:
-1. TikTok changed their API (tiktok-live-connector needs update)
-2. Network issues preventing connection to TikTok
-3. Rate limiting from TikTok
-
-**Solutions**:
-1. Update tiktok-live-connector: `cd nodejs-bridge && npm update`
-2. Check network connectivity
-3. Reduce request frequency
-
-### Process Keeps Crashing
-
-**Problem**: Node.js bridge process repeatedly crashes
-
-**Debug steps**:
-1. Test the bridge manually:
-```bash
-cd nodejs-bridge
-node index.js
-# Then type: {"action":"ping"}
-```
-
-2. Check Node.js version:
-```bash
-node --version  # Should be >= 18.0.0
-```
-
-3. Check dependencies:
-```bash
-npm list
-```
+- Node.js 18+ must be installed and available in PATH
+- The `nodejs-bridge` directory must be accessible (auto-detected or configured via `bridge_path`)
 
 ## Development
 
-### Testing the Bridge Manually
-
-You can test the bridge directly:
+To run the bridge standalone for testing:
 
 ```bash
 cd nodejs-bridge
-node index.js
+npm install
+npm start
 ```
 
-Then send JSON commands via stdin:
-```
-{"action":"ping"}
-{"action":"get_room_info","username":"some_tiktok_username"}
-```
-
-### Debugging
-
-To see stderr output from the bridge, modify the Rust provider to not suppress stderr:
-
-In `client.rs`, change:
-```rust
-.stderr(Stdio::null())  // Change this
-```
-
-to:
-```rust
-.stderr(Stdio::inherit())  // To this
-```
-
-Then you'll see console.error() output from the Node.js bridge.
-
-## Limitations
-
-1. **Node.js Dependency**: Requires Node.js runtime to be installed
-2. **Process Overhead**: Spawns an additional process per provider instance
-3. **No WebSocket Events**: Currently only fetches current state, doesn't subscribe to real-time events
-4. **Username Only**: Requires TikTok username, not user ID
-
-## Future Improvements
-
-Potential enhancements:
-
-1. **Event Streaming**: Subscribe to live chat, gifts, viewer joins/leaves
-2. **Connection Pooling**: Share a single bridge process across multiple provider instances
-3. **Caching**: Cache room info to reduce requests to TikTok
-4. **Pure Rust**: Reimplement the WebSocket protocol in pure Rust (complex)
-
-## License
-
-Same as the main StreamAggregator project (AGPLv3).
-
-## Credits
-
-- [tiktok-live-connector](https://github.com/zerodytrash/TikTok-Live-Connector) by zerodytrash
-- Original lsnd implementation from the Node.js version of this project
+Environment variables:
+- `TIKTOK_BRIDGE_PORT` - HTTP server port (default: 3456)
+- `TIKTOK_MAX_CONCURRENT` - Max concurrent requests (default: 10)
+- `TIKTOK_REQUEST_TIMEOUT` - Request timeout in ms (default: 30000)
+- `TIKTOK_RESPONSE_CACHE_TTL` - Response cache TTL in ms (default: 30000)
