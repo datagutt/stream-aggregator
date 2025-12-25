@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const { WebcastPushConnection } = require('tiktok-live-connector');
+const { TikTokLiveConnection } = require('tiktok-live-connector');
 const readline = require('readline');
 
 class TikTokBridge {
@@ -10,11 +10,11 @@ class TikTokBridge {
 
     async getRoomInfo(username) {
         try {
-            const tiktokConnection = new WebcastPushConnection('@' + username);
+            const tiktokConnection = new TikTokLiveConnection(username);
             
             let roomInfo = null;
             try {
-                roomInfo = await tiktokConnection.getRoomInfo();
+                roomInfo = await tiktokConnection.fetchRoomInfo();
             } catch (err) {
                 return {
                     success: false,
