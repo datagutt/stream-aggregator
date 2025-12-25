@@ -4,39 +4,39 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TikTokConfig {
-	/// URL of the TikTok bridge HTTP server
-	#[serde(default = "default_bridge_url")]
-	pub bridge_url: String,
-	/// Path to the Node.js bridge directory
-	pub bridge_path: Option<String>,
-	/// Maximum concurrent requests to the bridge
-	pub max_concurrent_requests: Option<usize>,
-	/// Request timeout in milliseconds
-	pub request_timeout_ms: Option<u64>,
-	/// Batch size for multi-user queries
-	pub batch_size: Option<usize>,
-	/// Requests per minute limit
-	pub requests_per_minute: Option<u32>,
-	/// Burst size for rate limiting
-	pub burst_size: Option<u32>,
+    /// URL of the TikTok bridge HTTP server
+    #[serde(default = "default_bridge_url")]
+    pub bridge_url: String,
+    /// Path to the Node.js bridge directory
+    pub bridge_path: Option<String>,
+    /// Maximum concurrent requests to the bridge
+    pub max_concurrent_requests: Option<usize>,
+    /// Request timeout in milliseconds
+    pub request_timeout_ms: Option<u64>,
+    /// Batch size for multi-user queries
+    pub batch_size: Option<usize>,
+    /// Requests per minute limit
+    pub requests_per_minute: Option<u32>,
+    /// Burst size for rate limiting
+    pub burst_size: Option<u32>,
 }
 
 fn default_bridge_url() -> String {
-	"http://127.0.0.1:3456".to_string()
+    "http://127.0.0.1:3456".to_string()
 }
 
 impl Default for TikTokConfig {
-	fn default() -> Self {
-		Self {
-			bridge_url: default_bridge_url(),
-			bridge_path: None,
-			max_concurrent_requests: None,
-			request_timeout_ms: None,
-			batch_size: None,
-			requests_per_minute: None,
-			burst_size: None,
-		}
-	}
+    fn default() -> Self {
+        Self {
+            bridge_url: default_bridge_url(),
+            bridge_path: None,
+            max_concurrent_requests: None,
+            request_timeout_ms: None,
+            batch_size: None,
+            requests_per_minute: None,
+            burst_size: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
