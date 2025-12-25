@@ -1,7 +1,5 @@
 # StreamAggregator
 
-## Vision
-
 **StreamAggregator** is a high-performance, extensible service for aggregating live stream information across multiple platforms.
 
 - **Platform-agnostic**: Support any streaming platform through a plugin system
@@ -9,3 +7,7 @@
 - **Multi-tenant ready**: Run multiple independent configurations simultaneously
 - **Horizontally scalable**: Distribute scraping workloads across multiple instances
 - **Observable**: Built-in metrics, tracing, and health checks
+
+## Getting started
+
+Read the [QUICKSTART.md](./QUICKSTART.md) or [QUICKSTART-DOCKER.md](./QUICKSTART-DOCKER.md).

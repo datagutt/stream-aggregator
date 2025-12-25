@@ -152,20 +152,116 @@ docker-compose up -d
 - Read [API.md](docs/API.md) for full API documentation
 - Configure providers in [config.toml](config.example.toml)
 
-## Configuration File (Advanced)
+## Configuration File (Alternative to .env)
 
-Instead of `.env`, you can use `config.toml`:
+Instead of using `.env` for environment variables, you can use a `config.toml` file for more organized configuration.
+
+### Why use config.toml?
+
+- More organized for complex setups
+- Version control your configuration (except secrets)
+- Enable/disable providers easily
+- Configure scheduler, auth, and all providers in one place
+- Less cluttered than many environment variables
+
+### How to use config.toml
+
+**Step 1: Create config.toml**
 
 ```bash
 # Copy example
 cp config.example.toml config.toml
-
-# Edit configuration
-nano config.toml
-
-# Mount in docker-compose.yml
-# Uncomment the config.toml volume line
 ```
+
+**Step 2: Edit your configuration**
+
+```toml
+# config.toml
+[server]
+host = "0.0.0.0"
+port = 8080
+
+[auth]
+api_keys = ["your-secret-key"]
+require_all = false
+
+[scheduler]
+interval_secs = 300
+max_concurrent = 10
+
+[store]
+backend = "diesel"
+database_url = "/data/streams.db"
+
+[providers.twitch]
+enabled = true
+client_id = "your_twitch_client_id"
+client_secret = "your_twitch_client_secret"
+
+[providers.youtube]
+enabled = true
+
+[providers.kick]
+enabled = true
+
+[providers.dlive]
+enabled = false  # Easy to disable providers
+
+[providers.trovo]
+enabled = true
+
+[providers.guac]
+enabled = true
+
+[providers.angelthump]
+enabled = true
+
+[providers.robotstreamer]
+enabled = true
+```
+
+**Step 3: Enable config.toml in docker-compose.yml**
+
+Edit `docker-compose.yml` and uncomment the config.toml volume:
+
+```yaml
+volumes:
+  - stream-data:/data
+  - ./config.toml:/app/config.toml:ro  # Uncomment this line
+```
+
+**Step 4: Start the service**
+
+```bash
+docker-compose up -d
+```
+
+### Best Practice: Separate Secrets
+
+For better security, keep secrets out of config.toml:
+
+**config.toml** (commit to git):
+```toml
+[providers.twitch]
+enabled = true
+# Don't put secrets here!
+```
+
+**.env** (in .gitignore):
+```bash
+TWITCH_CLIENT_ID=your_id
+TWITCH_CLIENT_SECRET=your_secret
+```
+
+The application will load settings from config.toml and override with environment variables from .env.
+
+### Config Priority
+
+1. Environment variables (highest priority)
+2. config.toml file
+3. Default values
+
+This means you can set defaults in config.toml and override sensitive values with .env.
 
 ## Production Checklist
 

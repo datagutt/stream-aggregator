@@ -1,0 +1,136 @@
+# StreamAggregator Production Configuration Example
+# Copy this file to config.production.toml and customize for your needs
+#
+# Usage with Docker:
+#   docker run -v ./config.production.toml:/app/config.toml:ro stream-aggregator
+#
+# Usage with Coolify:
+#   1. Add this file to your repository as config.production.toml
+#   2. Update Dockerfile to: COPY config.production.toml /app/config.toml
+#   3. Set secrets as environment variables in Coolify dashboard
+
+[server]
+# Bind to all interfaces for Docker
+host = "0.0.0.0"
+port = 8080
+
+[auth]
+# API keys for authentication (use strong random keys)
+# Generate with: openssl rand -hex 32
+# Keep these secret! Better to use environment variables:
+#   API_KEYS=key1,key2,key3
+api_keys = []
+
+# Require authentication for ALL endpoints (including GET /streams)
+# false = Public read access, auth only for POST/DELETE
+# true = All requests require authentication
+require_all = false
+
+[scheduler]
+# How often to scrape stream status (seconds)
+# 300 = 5 minutes (recommended for production)
+# 180 = 3 minutes (for faster updates)
+# 600 = 10 minutes (for lower API usage)
+interval_secs = 300
+
+# Maximum concurrent scrape tasks
+# Higher = faster scraping but more resource usage
+max_concurrent = 10
+
+[store]
+# Storage backend - always use "diesel" for production
+backend = "diesel"
+
+# Database path (SQLite)
+# For Docker, use /data/ which should be a persistent volume
+database_url = "/data/streams.db"
+
+# For PostgreSQL (future support):
+# database_url = "postgres://user:password@localhost:5432/stream_aggregator"
+
+# ============================================================================
+# Platform Providers
+# ============================================================================
+# Enable or disable platforms as needed
+# Set enabled = false to skip a platform entirely
+
+[providers.twitch]
+enabled = true
+# IMPORTANT: Set these as environment variables for security
+# TWITCH_CLIENT_ID=your_client_id
+# TWITCH_CLIENT_SECRET=your_client_secret
+# Get credentials at: https://dev.twitch.tv/console/apps
+
+[providers.youtube]
+enabled = true
+# No credentials required
+# Uses public HTML scraping
+
+[providers.kick]
+enabled = true
+# No credentials required
+# Uses browser emulation for Cloudflare bypass
+
+[providers.dlive]
+enabled = true
+# No credentials required
+# Uses GraphQL API
+
+[providers.trovo]
+enabled = true
+# Optional: client_id for higher rate limits
+# TROVO_CLIENT_ID=your_client_id
+
+[providers.guac]
+enabled = true
+# No credentials required
+# Simple REST API
+
+[providers.angelthump]
+enabled = true
+# No credentials required
+# Simple REST API
+
+[providers.robotstreamer]
+enabled = true
+# No credentials required
+# Simple REST API
+
+# ============================================================================
+# Notes for Production Deployment
+# ============================================================================
+#
+# 1. SECRETS MANAGEMENT
+#    - Never commit API keys/secrets to git!
+#    - Use environment variables for secrets:
+#      TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET, API_KEYS
+#    - Commit this config file with secrets removed
+#
+# 2. PERSISTENT STORAGE
+#    - Ensure /data is mounted to a persistent volume
+#    - Docker: -v stream-data:/data
+#    - Coolify: Add persistent volume at /data
+#
+# 3. MONITORING
+#    - Health check: GET /health
+#    - Returns {"status":"ok"} when healthy
+#    - Set up monitoring to ping this endpoint
+#
+# 4. BACKUPS
+#    - Database location: /data/streams.db
+#    - Backup strategy:
+#      * Stop container
+#      * Copy streams.db
+#      * Restart container
+#    - Or use SQLite online backup (VACUUM INTO)
+#
+# 5. UPDATES
+#    - Pull latest image
+#    - Stop container
+#    - Start with new image
+#    - Migrations run automatically on startup
+#
+# 6. SCALING
+#    - Single instance handles 1000+ tracked streamers
+#    - For larger scale, consider PostgreSQL backend
+#    - Multiple instances require coordination (future feature)

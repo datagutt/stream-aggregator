@@ -135,16 +135,98 @@ DATABASE_URL=./data/streams.db diesel migration run
    - Dockerfile Path: `./Dockerfile`
    - Port: `8080`
 
-3. **Add Environment Variables**
-   ```
-   HOST=0.0.0.0
-   PORT=8080
-   RUST_LOG=info
-   STORE_BACKEND=diesel
-   DATABASE_URL=/data/streams.db
-   TWITCH_CLIENT_ID=your_twitch_client_id
-   TWITCH_CLIENT_SECRET=your_twitch_client_secret
-   ```
+3. **Choose Configuration Method**
+
+   You have two options for configuration: **Environment Variables** (simpler) or **config.toml file** (more organized).
+
+#### Option A: Environment Variables (Recommended for Simple Setups)
+
+Add environment variables in Coolify dashboard:
+
+```
+HOST=0.0.0.0
+PORT=8080
+RUST_LOG=info
+STORE_BACKEND=diesel
+DATABASE_URL=/data/streams.db
+TWITCH_CLIENT_ID=your_twitch_client_id
+TWITCH_CLIENT_SECRET=your_twitch_client_secret
+API_KEYS=your-secret-key-here
+SCRAPE_INTERVAL_SECS=300
+```
+
+#### Option B: config.toml File (Recommended for Complex Configurations)
+
+**Step 1**: Create `config.production.toml` in your repository:
+
+```toml
+# config.production.toml
+[server]
+host = "0.0.0.0"
+port = 8080
+
+[auth]
+api_keys = ["your-secret-key-here"]
+require_all = false
+
+[scheduler]
+interval_secs = 300
+max_concurrent = 10
+
+[store]
+backend = "diesel"
+database_url = "/data/streams.db"
+
+[providers.twitch]
+enabled = true
+# Use environment variables for secrets
+# client_id and client_secret will be loaded from env vars
+
+[providers.youtube]
+enabled = true
+
+[providers.kick]
+enabled = true
+
+[providers.dlive]
+enabled = true
+
+[providers.trovo]
+enabled = true
+
+[providers.guac]
+enabled = true
+
+[providers.angelthump]
+enabled = true
+
+[providers.robotstreamer]
+enabled = true
+```
+
+**Step 2**: Update Dockerfile to use config file:
+
+Create a custom Dockerfile in your repo (or use a build hook):
+
+```dockerfile
+FROM stream-aggregator:latest
+COPY config.production.toml /app/config.toml
+CMD ["stream-aggregator", "--config", "/app/config.toml"]
+```
+
+**Step 3**: Set sensitive values as environment variables:
+
+```
+TWITCH_CLIENT_ID=your_twitch_client_id
+TWITCH_CLIENT_SECRET=your_twitch_client_secret
+```
+
+**Why use config.toml?**
+- Better organization for complex setups
+- Version control your configuration
+- Easier to manage multiple providers
+- Less environment variables clutter
+- Can still override with env vars for secrets
 
 4. **Configure Persistent Storage**
    - Add Volume:
@@ -170,6 +252,44 @@ DATABASE_URL=./data/streams.db diesel migration run
    - Monitor build logs in real-time
    - Service will be available at `https://your-domain.com`
 
+### Coolify Configuration Best Practices
+
+**For Secrets Management:**
+```toml
+# config.production.toml - Commit to git
+[providers.twitch]
+enabled = true
+# Don't put secrets in config file!
+# Use environment variables instead:
+# TWITCH_CLIENT_ID (set in Coolify dashboard)
+# TWITCH_CLIENT_SECRET (set in Coolify dashboard)
+```
+
+Then in Coolify, set environment variables:
+```
+TWITCH_CLIENT_ID=your_id
+TWITCH_CLIENT_SECRET=your_secret
+```
+
+The application will merge config.toml with environment variables.
+
+**For Multi-Environment Setup:**
+
+Create different config files:
+- `config.production.toml` - Production settings
+- `config.staging.toml` - Staging settings
+- `config.toml` - Local development (not committed)
+
+Then point to the right config in Coolify build:
+```dockerfile
+# For production
+COPY config.production.toml /app/config.toml
+
+# Or use environment variable to select
+ARG CONFIG_ENV=production
+COPY config.${CONFIG_ENV}.toml /app/config.toml
+```
+
 ### Coolify Tips
 
 - **Logs**: View real-time logs in the Coolify dashboard
@@ -177,6 +297,7 @@ DATABASE_URL=./data/streams.db diesel migration run
 - **Backups**: Enable automatic backups of the `/data` volume
 - **Scaling**: Coolify supports horizontal scaling (multiple replicas)
 - **Updates**: Push to git → Coolify rebuilds → Zero-downtime deployment
+- **Config Updates**: Change config.toml → commit → push → auto-deploy
 
 ---
 
