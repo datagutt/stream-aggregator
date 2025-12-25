@@ -60,7 +60,7 @@ USER appuser
 ENV HOST=0.0.0.0
 ENV PORT=8080
 ENV RUST_LOG=info
-ENV STORE_BACKEND=sqlite
+ENV STORE_BACKEND=diesel
 ENV DATABASE_URL=/data/streams.db
 
 # Expose port
