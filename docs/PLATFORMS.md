@@ -106,12 +106,14 @@ pub struct RateLimitConfig {
 **Crate**: `stream-aggregator-provider-twitch`
 
 #### Features
+
 - OAuth2 Client Credentials authentication
 - Helix API integration
 - Full discovery support (tags, categories, languages)
 - Batch API calls (up to 100 users per request)
 
 #### Authentication Flow
+
 ```rust
 pub struct TwitchProvider {
     client: reqwest::Client,
@@ -158,6 +160,7 @@ impl TwitchProvider {
 ```
 
 #### Discovery Implementation
+
 ```rust
 impl TwitchProvider {
     async fn discover_by_tags(&self, tags: &[String], limit: usize) -> Result<Vec<DiscoveredStreamer>, ProviderError> {
@@ -216,6 +219,7 @@ impl TwitchProvider {
 ```
 
 #### Rate Limits
+
 ```rust
 fn rate_limit_config(&self) -> RateLimitConfig {
     RateLimitConfig {
@@ -234,15 +238,18 @@ fn rate_limit_config(&self) -> RateLimitConfig {
 **Crate**: `stream-aggregator-provider-youtube`
 
 #### Features
+
 - **Pure HTML scraping only** (no API key, no official API)
 - Regex-based parsing matching lsnd implementation exactly
 - Support for channel IDs
 
 #### API Endpoints
+
 - `GET https://www.youtube.com/channel/{id}` - Channel page for metadata
 - `GET https://www.youtube.com/channel/{id}/live` - Live stream page
 
 #### Implementation Notes
+
 Uses pure regex pattern matching to extract data from HTML, matching the lsnd implementation exactly:
 
 ```rust
@@ -307,6 +314,7 @@ impl YouTubeProvider {
 ```
 
 #### Notes
+
 - **No official API support** - only HTML scraping per user requirement
 - **No discovery support** - YouTube doesn't expose public discovery endpoints without API
 - Parsing patterns match lsnd/scrapers/youtube.js exactly
@@ -318,12 +326,14 @@ impl YouTubeProvider {
 **Crate**: `stream-aggregator-provider-kick`
 
 #### Features
+
 - **JA3/JA4 TLS fingerprint spoofing** via `wreq` (required for Cloudflare bypass)
 - Browser emulation presets via `wreq-util`
 - XSRF token handling
 - REST API v2
 
 #### API Endpoint
+
 - `GET /api/v2/channels/{username}` - Returns channel and livestream info
 
 #### Why wreq is Required
@@ -333,6 +343,7 @@ Standard HTTP clients like `reqwest` will be blocked. We use [`wreq`](https://gi
 a fork of reqwest with full JA3/JA4/HTTP2 fingerprint emulation capabilities.
 
 #### Response Structure
+
 ```json
 {
   "user": {
@@ -348,6 +359,7 @@ a fork of reqwest with full JA3/JA4/HTTP2 fingerprint emulation capabilities.
 ```
 
 #### Implementation Notes
+
 ```rust
 use wreq::Client;
 use wreq_util::Emulation;
@@ -428,6 +440,7 @@ impl KickProvider {
 | `Emulation::Edge131` | Edge 131 |
 
 #### Rate Limits
+
 ```rust
 fn rate_limit_config(&self) -> RateLimitConfig {
     RateLimitConfig {
@@ -460,10 +473,11 @@ brew install cmake perl llvm
 **Internal Dependency**: `tiktok-live` (custom crate in workspace)
 
 #### Features
+
 - **WebSocket-based connection** to TikTok's Webcast push service
 - **Protobuf message decoding** for real-time events
 - Real-time viewer counts, chat, gifts, and more
-- Based on [TikTok-Live-Connector](https://github.com/zerodytrash/TikTok-Live-Connector)
+- Based on [TikTok-Live-Connector](https://github.com/zerodytrash/TikTok-Live-Connector/tree/ts-rewrite)
 
 #### Architecture
 
@@ -605,6 +619,7 @@ impl TikTokProvider {
 Our internal `tiktok-live` crate (in `crates/tiktok-live/`) handles the WebSocket protocol:
 
 **Key Features:**
+
 - Room ID discovery from TikTok page HTML
 - WebSocket connection to Webcast push service
 - Protobuf message decoding (chat, gifts, likes, viewer counts)
@@ -612,6 +627,7 @@ Our internal `tiktok-live` crate (in `crates/tiktok-live/`) handles the WebSocke
 - Event broadcasting via `tokio::sync::broadcast`
 
 **Protobuf Messages Supported:**
+
 - `WebcastChatMessage` - Chat comments
 - `WebcastGiftMessage` - Gift events
 - `WebcastLikeMessage` - Like events
@@ -649,13 +665,16 @@ prost-build = "0.12"
 **Crate**: `stream-aggregator-provider-dlive`
 
 #### Features
+
 - GraphQL API
 - Simple authentication-free access
 
 #### API Endpoint
+
 - `POST https://graphigo.prd.dlive.tv/` - GraphQL endpoint
 
 #### Implementation Notes
+
 ```rust
 pub struct DLiveProvider {
     client: reqwest::Client,
@@ -711,11 +730,13 @@ impl DLiveProvider {
 **Crate**: `stream-aggregator-provider-trovo`
 
 #### Features
+
 - Official API with Client ID authentication
 - Two-step lookup (username -> channel_id -> channel data)
 - Rate limit: 120 requests/minute
 
 #### API Endpoints
+
 1. `POST /openplatform/getusers` - Get channel_id from username
    - Body: `{"user": ["username"]}`
    - Returns: `{"users": [{"channel_id": "...", "username": "...", ...}]}`
@@ -725,6 +746,7 @@ impl DLiveProvider {
    - Returns: Channel info with `is_live`, `live_title`, `current_viewers`, etc.
 
 #### Implementation Notes
+
 ```rust
 pub struct TrovoProvider {
     client: reqwest::Client,
@@ -778,9 +800,11 @@ impl TrovoProvider {
 **Crate**: `stream-aggregator-provider-guac`
 
 #### API Endpoint
+
 - `GET https://api.guac.tv/v2/stream/{id}` - Get stream info
 
 #### Response Structure
+
 ```json
 {
   "data": {
@@ -798,6 +822,7 @@ impl TrovoProvider {
 ```
 
 #### Implementation Notes
+
 ```rust
 impl GuacProvider {
     async fn fetch_stream(&self, user_id: &str) -> Result<StreamInfo, ProviderError> {
@@ -827,10 +852,12 @@ impl GuacProvider {
 **Crate**: `stream-aggregator-provider-angelthump`
 
 #### API Endpoints
+
 - `GET https://api.angelthump.com/v3/users/?username={username}` - Get user info (returns array)
 - `GET https://api.angelthump.com/v3/streams/?username={username}` - Get stream info (returns array)
 
 #### Implementation Notes
+
 ```rust
 impl AngelThumpProvider {
     async fn fetch_user(&self, username: &str) -> Result<AngelThumpUser, ProviderError> {
@@ -853,6 +880,7 @@ impl AngelThumpProvider {
 ```
 
 #### Notes
+
 Both endpoints use query parameters and return arrays. Stream endpoint returns empty array if offline.
 
 ### 9. RobotStreamer Provider
@@ -860,9 +888,11 @@ Both endpoints use query parameters and return arrays. Stream endpoint returns e
 **Crate**: `stream-aggregator-provider-robotstreamer`
 
 #### API Endpoint
+
 - `GET http://api.robotstreamer.com:8080/v1/get_robot/{id}` - Get robot info (returns array)
 
 #### Response Structure
+
 ```json
 [{
   "status": "live" | "offline",
@@ -872,6 +902,7 @@ Both endpoints use query parameters and return arrays. Stream endpoint returns e
 ```
 
 #### Implementation Notes
+
 ```rust
 impl RobotStreamerProvider {
     async fn fetch_robot(&self, robot_id: &str) -> Result<RobotStreamerRobot, ProviderError> {
@@ -905,6 +936,7 @@ impl RobotStreamerProvider {
 ```
 
 #### Notes
+
 - Uses **HTTP only** (not HTTPS) on port 8080
 - API returns an array with single element
 - Status field checked for "live" string or "1"
@@ -1023,6 +1055,7 @@ pub enum ProviderError {
 ## Testing Strategy
 
 ### Unit Tests
+
 ```rust
 #[cfg(test)]
 mod tests {
@@ -1052,6 +1085,7 @@ mod tests {
 ```
 
 ### Integration Tests
+
 ```rust
 #[tokio::test]
 #[ignore] // Run manually or in CI with credentials
@@ -1077,6 +1111,7 @@ async fn test_twitch_real_api() {
 7. Document API requirements and rate limits
 
 Template:
+
 ```rust
 // stream-aggregator-provider-newplatform/src/lib.rs
 
@@ -1141,6 +1176,7 @@ impl PlatformProvider for NewPlatformProvider {
 ### Default: wreq for All Platforms
 
 We use **wreq** as the HTTP client for **all platforms**. It's a fork of `reqwest` with:
+
 - 100% API compatibility with reqwest
 - JA3/JA4/HTTP2 TLS fingerprint emulation
 - Browser emulation presets via `wreq-util`
@@ -1189,6 +1225,7 @@ let simple_client = Client::new();
 ### WebSocket Connections
 
 TikTok is the only platform using WebSocket (via `tokio-tungstenite`):
+
 - Real-time push service for live stream events
 - Protobuf-encoded messages
 - Sub-second viewer count updates

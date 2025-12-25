@@ -7,6 +7,7 @@ You are implementing a modern Rust rewrite of a Node.js live stream aggregation 
 **StreamAggregator** is a high-performance, modular service for aggregating live stream information across multiple platforms. It replaces the legacy [LSND](https://github.com/livestreamnorge/lsnd) Node.js project.
 
 ### Key Goals
+
 - **Platform-agnostic**: Support any streaming platform through a plugin system
 - **Flexible discovery**: Support both manual streamer lists AND automatic discovery (tags, categories, games)
 - **Not locked to any region**: Unlike the original (Norwegian streamers), this is generic
@@ -15,6 +16,7 @@ You are implementing a modern Rust rewrite of a Node.js live stream aggregation 
 ## Reference Materials
 
 ### Design Documents (in this repo)
+
 - `docs/ARCHITECTURE.md` - High-level system architecture, core components, data models
 - `docs/PLATFORMS.md` - Platform provider implementations, HTTP client strategy, TikTok WebSocket protocol
 - `docs/CONFIGURATION.md` - Config file format (TOML), storage backends, caching
@@ -23,9 +25,11 @@ You are implementing a modern Rust rewrite of a Node.js live stream aggregation 
 - `docs/MIGRATION.md` - Migration guide from Node.js version
 
 ### Legacy Codebase Reference
-The original Node.js implementation is at: https://github.com/livestreamnorge/lsnd
+
+The original Node.js implementation is at: <https://github.com/livestreamnorge/lsnd>
 
 Key files to reference for API behavior and scraping logic:
+
 - `index.js` - Express server, scheduling logic, endpoint definitions
 - `scrapers.js` - Scraper orchestration
 - `scrapers/*.js` - Individual platform implementations:
@@ -40,11 +44,13 @@ Key files to reference for API behavior and scraping logic:
 ## Technical Decisions (Already Made)
 
 ### HTTP Client: wreq
+
 Use **wreq** (not reqwest) as the HTTP client for ALL platforms:
+
 - Fork of reqwest, 100% API compatible
 - JA3/JA4/HTTP2 TLS fingerprint emulation
 - Required for Kick (Cloudflare bypass), beneficial everywhere
-- https://github.com/0x676e67/wreq
+- <https://github.com/0x676e67/wreq>
 
 ```rust
 use wreq::Client;
@@ -60,12 +66,15 @@ let client = Client::new();
 ```
 
 ### TikTok: Custom WebSocket Crate
-Create an internal `tiktok-live` crate based on https://github.com/zerodytrash/TikTok-Live-Connector:
+
+Create an internal `tiktok-live` crate based on <https://github.com/zerodytrash/TikTok-Live-Connector/tree/ts-rewrite>:
+
 - WebSocket connection to TikTok's Webcast push service
 - Protobuf message decoding (prost)
 - Real-time events: chat, gifts, viewer counts, stream end
 
 ### Platforms to Support (9 total)
+
 1. **Twitch** - OAuth2, Helix API, full discovery support
 2. **YouTube** - HTML scraping (or Data API v3 with key)
 3. **Kick** - wreq with Chrome emulation (required)
@@ -79,11 +88,13 @@ Create an internal `tiktok-live` crate based on https://github.com/zerodytrash/T
 **Removed:** Brime (platform no longer active)
 
 ### Storage Backends
+
 - **Memory** (default) - In-memory with dashmap
 - **SQLite** - Persistent, single-file
 - **PostgreSQL** - Scalable, multi-instance
 
 ### Web Framework
+
 - **axum** for HTTP API
 - **tokio-tungstenite** for WebSocket (TikTok, and client-facing real-time API)
 
@@ -125,6 +136,7 @@ stream-aggregator/
 ## Implementation Order (Suggested)
 
 ### Phase 1: Foundation
+
 1. Set up workspace with Cargo.toml
 2. Implement `stream-aggregator-core`:
    - `StreamInfo`, `TrackedStreamer`, `DiscoveryRule` models
@@ -134,29 +146,34 @@ stream-aggregator/
 3. Implement `stream-aggregator-store` (memory backend first)
 
 ### Phase 2: First Provider
+
 4. Implement `stream-aggregator-provider-twitch`:
    - OAuth2 token management
    - Helix API integration
    - This validates the provider trait design
 
 ### Phase 3: API Layer
+
 5. Implement `stream-aggregator-api`:
    - Basic endpoints: `/streams`, `/platforms`, `/health`
    - Rate limiting middleware
 
 ### Phase 4: Scheduler
+
 6. Implement `stream-aggregator-scheduler`:
    - Periodic scraping
    - Rate limiting per provider
    - Staggered requests
 
 ### Phase 5: Main Binary
+
 7. Wire everything together in `stream-aggregator`:
    - Config loading
    - Provider registration
    - Server startup
 
 ### Phase 6: Remaining Providers
+
 8. Implement remaining providers (easiest to hardest):
    - DLive (simple GraphQL)
    - Guac, AngelThump, RobotStreamer (simple REST)
@@ -166,20 +183,23 @@ stream-aggregator/
    - TikTok (requires tiktok-live crate)
 
 ### Phase 7: TikTok Crate
+
 9. Implement `tiktok-live`:
    - Room ID discovery
    - WebSocket connection
    - Protobuf decoding
 
 ### Phase 8: Advanced Features
+
 10. Discovery system (Twitch tags/categories)
-11. SQLite/PostgreSQL storage backends
-12. WebSocket API for real-time updates
-13. OpenAPI documentation
+2. SQLite/PostgreSQL storage backends
+3. WebSocket API for real-time updates
+4. OpenAPI documentation
 
 ## Key Traits
 
 ### PlatformProvider
+
 ```rust
 #[async_trait]
 pub trait PlatformProvider: Send + Sync + 'static {
@@ -202,6 +222,7 @@ pub trait PlatformProvider: Send + Sync + 'static {
 ```
 
 ### StreamStore
+
 ```rust
 #[async_trait]
 pub trait StreamStore: Send + Sync + 'static {
@@ -265,6 +286,7 @@ pub struct TrackedStreamer {
 ## Build Requirements
 
 wreq requires BoringSSL:
+
 ```bash
 # Ubuntu/Debian
 sudo apt-get install build-essential cmake perl pkg-config libclang-dev musl-tools -y

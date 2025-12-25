@@ -5,7 +5,7 @@ TikTok Live stream provider for StreamAggregator.
 ## Architecture
 
 This provider uses a **Node.js bridge** to access TikTok Live data via the
-[tiktok-live-connector](https://github.com/zerodytrash/TikTok-Live-Connector) library.
+[tiktok-live-connector](https://github.com/zerodytrash/TikTok-Live-Connector/tree/ts-rewrite) library.
 
 ```
 ┌─────────────────────┐     HTTP      ┌─────────────────────┐
@@ -43,6 +43,7 @@ bridge_path = "/path/to/nodejs-bridge"
 The Node.js bridge exposes the following HTTP endpoints:
 
 ### GET /health
+
 Health check endpoint.
 
 ```json
@@ -56,9 +57,11 @@ Health check endpoint.
 ```
 
 ### POST /room
+
 Get room info for a single user.
 
 Request:
+
 ```json
 {
   "username": "tiktok_user"
@@ -66,6 +69,7 @@ Request:
 ```
 
 Response:
+
 ```json
 {
   "success": true,
@@ -86,9 +90,11 @@ Response:
 ```
 
 ### POST /batch
+
 Get room info for multiple users.
 
 Request:
+
 ```json
 {
   "usernames": ["user1", "user2", "user3"]
@@ -96,6 +102,7 @@ Request:
 ```
 
 Response:
+
 ```json
 {
   "success": true,
@@ -142,6 +149,7 @@ npm start
 ```
 
 Environment variables:
+
 - `TIKTOK_BRIDGE_PORT` - HTTP server port (default: 3456)
 - `TIKTOK_MAX_CONCURRENT` - Max concurrent requests (default: 10)
 - `TIKTOK_REQUEST_TIMEOUT` - Request timeout in ms (default: 30000)
