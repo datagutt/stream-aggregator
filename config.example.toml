@@ -21,7 +21,7 @@ max_concurrent = 10
 # Storage backend type ("memory", "sqlite", "postgres")
 backend = "memory"
 # Database connection URL (for sqlite/postgres)
-# database_url = "sqlite://stream_aggregator.db"
+# database_url = "stream_aggregator.db"
 
 [providers.twitch]
 enabled = true
