@@ -5,11 +5,7 @@ use dashmap::DashMap;
 use std::sync::Arc;
 use tracing::{debug, trace};
 
-use stream_aggregator_core::{
-    errors::StoreError,
-    models::*,
-    traits::StreamStore,
-};
+use stream_aggregator_core::{errors::StoreError, models::*, traits::StreamStore};
 
 /// In-memory storage implementation
 ///
@@ -83,7 +79,9 @@ impl StreamStore for MemoryStore {
 
                 // Filter by group (from metadata)
                 if let Some(ref group) = query.group {
-                    if let Some(metadata_group) = stream.metadata.get("group").and_then(|v| v.as_str()) {
+                    if let Some(metadata_group) =
+                        stream.metadata.get("group").and_then(|v| v.as_str())
+                    {
                         if metadata_group != group {
                             return false;
                         }
@@ -94,7 +92,9 @@ impl StreamStore for MemoryStore {
 
                 // Filter by labels (from metadata)
                 for (key, value) in &query.labels {
-                    if let Some(metadata_labels) = stream.metadata.get("labels").and_then(|v| v.as_object()) {
+                    if let Some(metadata_labels) =
+                        stream.metadata.get("labels").and_then(|v| v.as_object())
+                    {
                         if metadata_labels.get(key).and_then(|v| v.as_str()) != Some(value) {
                             return false;
                         }
@@ -106,11 +106,14 @@ impl StreamStore for MemoryStore {
                 // Search in display name and title
                 if let Some(ref search) = query.search {
                     let search_lower = search.to_lowercase();
-                    let display_name_match = stream.display_name.to_lowercase().contains(&search_lower);
-                    let title_match = stream.title.as_ref()
+                    let display_name_match =
+                        stream.display_name.to_lowercase().contains(&search_lower);
+                    let title_match = stream
+                        .title
+                        .as_ref()
                         .map(|t| t.to_lowercase().contains(&search_lower))
                         .unwrap_or(false);
-                    
+
                     if !display_name_match && !title_match {
                         return false;
                     }
@@ -166,7 +169,8 @@ impl StreamStore for MemoryStore {
                 "name" => a.display_name.cmp(&b.display_name),
                 "platform" => a.platform.cmp(&b.platform),
                 "updated" => a.last_updated.cmp(&b.last_updated),
-                "viewers" | _ => b.viewer_count
+                "viewers" | _ => b
+                    .viewer_count
                     .unwrap_or(0)
                     .cmp(&a.viewer_count.unwrap_or(0)),
             };
@@ -278,7 +282,11 @@ impl StreamStore for MemoryStore {
         Ok(streamers)
     }
 
-    async fn remove_tracked_streamer(&self, platform: &str, user_id: &str) -> Result<(), StoreError> {
+    async fn remove_tracked_streamer(
+        &self,
+        platform: &str,
+        user_id: &str,
+    ) -> Result<(), StoreError> {
         let key = Self::streamer_key(platform, user_id);
         trace!(key = %key, "Removing tracked streamer");
         self.tracked_streamers.remove(&key);
@@ -319,7 +327,10 @@ impl StreamStore for MemoryStore {
         Ok(self.discovery_rules.get(id).map(|entry| entry.clone()))
     }
 
-    async fn get_discovery_rules(&self, platform: Option<&str>) -> Result<Vec<DiscoveryRule>, StoreError> {
+    async fn get_discovery_rules(
+        &self,
+        platform: Option<&str>,
+    ) -> Result<Vec<DiscoveryRule>, StoreError> {
         trace!(?platform, "Querying discovery rules");
 
         let rules: Vec<DiscoveryRule> = self
@@ -405,7 +416,10 @@ mod tests {
         assert!(result.is_err());
 
         // Remove streamer
-        store.remove_tracked_streamer("twitch", "user123").await.unwrap();
+        store
+            .remove_tracked_streamer("twitch", "user123")
+            .await
+            .unwrap();
         let deleted = store
             .get_tracked_streamer("twitch", "user123")
             .await

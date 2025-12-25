@@ -288,7 +288,7 @@ async fn main() -> Result<()> {
     }
 
     println!("\nConnecting to database: {}", args.database_url);
-    
+
     // Create DieselStore (this automatically runs migrations)
     let store = DieselStore::new(&args.database_url)?;
     println!("Database initialized (migrations applied automatically)");
@@ -298,7 +298,7 @@ async fn main() -> Result<()> {
     for old_streamer in unique_streamers {
         // Check if streamer already exists
         use stream_aggregator_core::traits::StreamStore;
-        
+
         let exists = store
             .get_tracked_streamer(&old_streamer.platform, &old_streamer.user_id)
             .await?;

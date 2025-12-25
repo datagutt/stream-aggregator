@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use std::sync::Arc;
-use tracing::{info, warn};
+use tracing::info;
 
 use stream_aggregator_core::traits::StreamStore;
 use stream_aggregator_store::MemoryStore;

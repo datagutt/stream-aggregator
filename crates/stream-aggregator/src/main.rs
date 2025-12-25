@@ -2,7 +2,6 @@
 
 use anyhow::Result;
 use clap::Parser;
-use std::sync::Arc;
 use tracing::info;
 use tracing_subscriber::prelude::*;
 
@@ -132,7 +131,7 @@ async fn main() -> Result<()> {
 
     // Start scheduler in background
     let scheduler_store = store.clone();
-    let providers: Vec<_> = registry.list().iter().cloned().collect();
+    let providers: Vec<_> = registry.list().to_vec();
 
     let scheduler_config = SchedulerConfig {
         scrape_interval_secs: config.scheduler.interval_secs,

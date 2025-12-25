@@ -188,23 +188,23 @@ impl ProviderRegistry {
                     Ok::<RobotStreamerProvider, anyhow::Error>(RobotStreamerProvider::new(robotstreamer_config))
                 }
             },
-			{
-				feature: "provider-tiktok",
-				provider: TikTokProvider,
-				config_type: crate::config::TikTokProviderConfig,
-				config_field: tiktok,
-				name: "TikTok",
-				init: |cfg: crate::config::TikTokProviderConfig| async {
-					let mut tiktok_config = TikTokConfig::default();
-					if let Some(bridge_url) = cfg.bridge_url {
-						tiktok_config.bridge_url = bridge_url;
-					}
-					if let Some(bridge_path) = cfg.bridge_path {
-						tiktok_config.bridge_path = Some(bridge_path);
-					}
-					TikTokProvider::new(tiktok_config).await
-				}
-			},
+            {
+                feature: "provider-tiktok",
+                provider: TikTokProvider,
+                config_type: crate::config::TikTokProviderConfig,
+                config_field: tiktok,
+                name: "TikTok",
+                init: |cfg: crate::config::TikTokProviderConfig| async {
+                    let mut tiktok_config = TikTokConfig::default();
+                    if let Some(bridge_url) = cfg.bridge_url {
+                        tiktok_config.bridge_url = bridge_url;
+                    }
+                    if let Some(bridge_path) = cfg.bridge_path {
+                        tiktok_config.bridge_path = Some(bridge_path);
+                    }
+                    TikTokProvider::new(tiktok_config).await
+                }
+            },
         ]);
 
         if registry.providers.is_empty() {

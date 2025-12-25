@@ -5,7 +5,7 @@ use std::fs;
 use std::path::Path;
 
 /// Main application configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AppConfig {
     #[serde(default)]
     pub server: ServerConfig,
@@ -21,18 +21,6 @@ pub struct AppConfig {
 
     #[serde(default)]
     pub store: StoreConfig,
-}
-
-impl Default for AppConfig {
-    fn default() -> Self {
-        Self {
-            server: ServerConfig::default(),
-            auth: AuthSettings::default(),
-            scheduler: SchedulerConfig::default(),
-            providers: ProvidersConfig::default(),
-            store: StoreConfig::default(),
-        }
-    }
 }
 
 /// Server configuration
@@ -52,22 +40,13 @@ impl Default for ServerConfig {
 }
 
 /// Authentication settings
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AuthSettings {
     /// API keys for authentication (comma-separated in env var)
     pub api_keys: Vec<String>,
 
     /// Require authentication for all requests (including reads)
     pub require_all: bool,
-}
-
-impl Default for AuthSettings {
-    fn default() -> Self {
-        Self {
-            api_keys: Vec::new(),
-            require_all: false,
-        }
-    }
 }
 
 /// Scheduler configuration
