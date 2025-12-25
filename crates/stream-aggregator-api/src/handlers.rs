@@ -12,7 +12,11 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tracing::debug;
 
-use stream_aggregator_core::{errors::*, models::*, traits::{StreamStore, PlatformProvider}};
+use stream_aggregator_core::{
+    errors::*,
+    models::*,
+    traits::{PlatformProvider, StreamStore},
+};
 
 use crate::responses::*;
 
@@ -20,7 +24,7 @@ use crate::responses::*;
 type ApiResult<T> = Result<T, ApiErrorResponse>;
 
 /// Generic query string extractor that supports bracket notation
-/// 
+///
 /// This extractor uses `serde_qs` to properly parse query strings with
 /// bracket notation like `?labels[key]=value` into nested structures.
 pub struct QsQuery<T>(pub T);
@@ -35,13 +39,12 @@ where
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         let query = parts.uri.query().unwrap_or_default();
-        let value = serde_qs::from_str(query)
-            .map_err(|e| {
-                (
-                    StatusCode::BAD_REQUEST,
-                    format!("Failed to parse query string: {}", e),
-                )
-            })?;
+        let value = serde_qs::from_str(query).map_err(|e| {
+            (
+                StatusCode::BAD_REQUEST,
+                format!("Failed to parse query string: {}", e),
+            )
+        })?;
         Ok(QsQuery(value))
     }
 }
@@ -168,17 +171,17 @@ pub async fn add_streamer(
     match (&req.user_id, &req.username) {
         (None, None) => {
             return Err(ApiErrorResponse(ApiError::BadRequest(
-                "Must provide either 'user_id' or 'username'".to_string()
+                "Must provide either 'user_id' or 'username'".to_string(),
             )));
         }
         (Some(_), Some(_)) => {
             return Err(ApiErrorResponse(ApiError::BadRequest(
-                "Cannot provide both 'user_id' and 'username'".to_string()
+                "Cannot provide both 'user_id' and 'username'".to_string(),
             )));
         }
         _ => {}
     }
-    
+
     let provider = state.providers.get(&req.platform).ok_or_else(|| {
         ApiErrorResponse(ApiError::BadRequest(format!(
             "Unsupported platform: {}",
@@ -214,11 +217,16 @@ pub async fn add_streamer(
         Err(e) => {
             // Scrape failed, remove the streamer
             tracing::warn!(platform = %req.platform, user_id = %final_user_id, "Initial scrape failed, removing streamer: {}", e);
-            if let Err(remove_err) = state.store.remove_tracked_streamer(&req.platform, &final_user_id).await {
+            if let Err(remove_err) = state
+                .store
+                .remove_tracked_streamer(&req.platform, &final_user_id)
+                .await
+            {
                 tracing::error!(platform = %req.platform, user_id = %final_user_id, "Failed to remove streamer after scrape failure: {}", remove_err);
             }
             return Err(ApiErrorResponse(ApiError::BadRequest(format!(
-                "Failed to fetch initial stream data: {}", e
+                "Failed to fetch initial stream data: {}",
+                e
             ))));
         }
     }
@@ -233,7 +241,10 @@ pub async fn remove_streamer(
 ) -> ApiResult<Json<ApiResponse<()>>> {
     debug!(platform = %platform, user_id = %user_id, "Removing streamer");
 
-    state.store.remove_tracked_streamer(&platform, &user_id).await?;
+    state
+        .store
+        .remove_tracked_streamer(&platform, &user_id)
+        .await?;
     Ok(Json(ApiResponse::new(())))
 }
 
@@ -246,9 +257,7 @@ pub async fn health_check() -> Json<HealthCheckResponse> {
 }
 
 /// GET /platforms - List supported platforms
-pub async fn list_platforms(
-    State(state): State<AppState>,
-) -> Json<ApiResponse<Vec<PlatformInfo>>> {
+pub async fn list_platforms(State(state): State<AppState>) -> Json<ApiResponse<Vec<PlatformInfo>>> {
     let platforms = state
         .providers
         .values()

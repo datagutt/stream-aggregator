@@ -29,7 +29,10 @@ pub trait PlatformProvider: Send + Sync + 'static {
     async fn fetch_stream(&self, user_id: &str) -> Result<StreamInfo, ProviderError>;
 
     /// Batch fetch multiple users
-    async fn fetch_streams_batch(&self, user_ids: &[String]) -> Vec<Result<StreamInfo, ProviderError>> {
+    async fn fetch_streams_batch(
+        &self,
+        user_ids: &[String],
+    ) -> Vec<Result<StreamInfo, ProviderError>> {
         let mut results = Vec::with_capacity(user_ids.len());
         for id in user_ids {
             results.push(self.fetch_stream(id).await);
@@ -174,7 +177,11 @@ pub trait StreamStore: Send + Sync + 'static {
     /// # Arguments
     /// * `platform` - Platform identifier
     /// * `user_id` - Platform-specific user ID
-    async fn remove_tracked_streamer(&self, platform: &str, user_id: &str) -> Result<(), StoreError>;
+    async fn remove_tracked_streamer(
+        &self,
+        platform: &str,
+        user_id: &str,
+    ) -> Result<(), StoreError>;
 
     /// Update a tracked streamer
     ///
@@ -211,7 +218,10 @@ pub trait StreamStore: Send + Sync + 'static {
     ///
     /// # Returns
     /// * List of discovery rules
-    async fn get_discovery_rules(&self, platform: Option<&str>) -> Result<Vec<DiscoveryRule>, StoreError>;
+    async fn get_discovery_rules(
+        &self,
+        platform: Option<&str>,
+    ) -> Result<Vec<DiscoveryRule>, StoreError>;
 
     /// Update a discovery rule
     ///

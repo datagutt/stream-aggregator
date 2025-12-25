@@ -57,16 +57,18 @@ async fn main() -> Result<()> {
 
     for old_streamer in old_streamers {
         // Check if streamer already exists
-        let exists: Option<(i32,)> = sqlx::query_as(
-            "SELECT 1 FROM tracked_streamers WHERE platform = ? AND user_id = ?"
-        )
-        .bind(&old_streamer.platform)
-        .bind(&old_streamer.userId)
-        .fetch_optional(&pool)
-        .await?;
+        let exists: Option<(i32,)> =
+            sqlx::query_as("SELECT 1 FROM tracked_streamers WHERE platform = ? AND user_id = ?")
+                .bind(&old_streamer.platform)
+                .bind(&old_streamer.userId)
+                .fetch_optional(&pool)
+                .await?;
 
         if exists.is_some() {
-            println!("Skipping existing streamer: {} on {}", old_streamer.userId, old_streamer.platform);
+            println!(
+                "Skipping existing streamer: {} on {}",
+                old_streamer.userId, old_streamer.platform
+            );
             skipped += 1;
             continue;
         }
@@ -103,7 +105,7 @@ async fn main() -> Result<()> {
                 platform, user_id, custom_name, group_name, priority,
                 labels, source, discovery_rule_id, created_at
             ) VALUES (?, ?, ?, ?, ?, ?, 'manual', NULL, ?)
-            "#
+            "#,
         )
         .bind(&old_streamer.platform)
         .bind(&old_streamer.userId)
@@ -115,7 +117,10 @@ async fn main() -> Result<()> {
         .execute(&pool)
         .await?;
 
-        println!("Migrated: {} on {}", old_streamer.userId, old_streamer.platform);
+        println!(
+            "Migrated: {} on {}",
+            old_streamer.userId, old_streamer.platform
+        );
         migrated += 1;
     }
 

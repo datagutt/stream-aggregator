@@ -8,12 +8,12 @@
 //! - Error types
 //! - ID generation utilities
 
-pub mod models;
-pub mod traits;
 pub mod errors;
 pub mod id;
+pub mod models;
+pub mod traits;
 
-pub use models::*;
-pub use traits::*;
 pub use errors::*;
 pub use id::*;
+pub use models::*;
+pub use traits::*;

@@ -2,9 +2,9 @@
 //!
 //! Run with: cargo run --example auth_example
 
+use std::sync::Arc;
 use stream_aggregator_api::{create_router_with_auth, AuthConfig};
 use stream_aggregator_store::MemoryStore;
-use std::sync::Arc;
 
 #[tokio::main]
 async fn main() {
@@ -21,14 +21,9 @@ async fn main() {
 
     // Example 2: API keys required for write operations
     println!("=== Example 2: API Keys for Writes ===");
-    let api_keys = vec![
-        "secret-key-123".to_string(),
-        "another-key-456".to_string(),
-    ];
-    let write_auth_router = create_router_with_auth(
-        store.clone(),
-        AuthConfig::new(api_keys.clone()),
-    );
+    let api_keys = vec!["secret-key-123".to_string(), "another-key-456".to_string()];
+    let write_auth_router =
+        create_router_with_auth(store.clone(), AuthConfig::new(api_keys.clone()));
     println!("Router created with API key authentication");
     println!("- GET /api/v1/streams - Public (no auth required)");
     println!("- POST /api/v1/streamers - Requires API key");
@@ -40,7 +35,9 @@ async fn main() {
     }
     println!();
     println!("Usage:");
-    println!("  curl -H 'X-API-Key: secret-key-123' -X POST http://localhost:8080/api/v1/streamers");
+    println!(
+        "  curl -H 'X-API-Key: secret-key-123' -X POST http://localhost:8080/api/v1/streamers"
+    );
     println!("  curl 'http://localhost:8080/api/v1/streamers?api_key=secret-key-123'");
     println!();
 

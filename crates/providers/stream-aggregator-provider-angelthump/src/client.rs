@@ -5,13 +5,9 @@ use chrono::Utc;
 use tracing::debug;
 use wreq::Client;
 
-use stream_aggregator_core::{
-    errors::ProviderError,
-    models::*,
-    traits::PlatformProvider,
-};
+use stream_aggregator_core::{errors::ProviderError, models::*, traits::PlatformProvider};
 
-use crate::models::{AngelThumpConfig, AngelThumpUser, AngelThumpStream};
+use crate::models::{AngelThumpConfig, AngelThumpStream, AngelThumpUser};
 
 /// AngelThump platform provider (two-endpoint lookup)
 pub struct AngelThumpProvider {
@@ -34,12 +30,10 @@ impl AngelThumpProvider {
         debug!("Fetching AngelThump user: {}", username);
 
         let url = format!("https://api.angelthump.com/v3/users/?username={}", username);
-        
-        let response = self.client
-            .get(&url)
-            .send()
-            .await
-            .map_err(|e| ProviderError::HttpError(format!("Failed to fetch AngelThump user: {}", e)))?;
+
+        let response = self.client.get(&url).send().await.map_err(|e| {
+            ProviderError::HttpError(format!("Failed to fetch AngelThump user: {}", e))
+        })?;
 
         let status = response.status();
         if status == 404 {
@@ -47,30 +41,38 @@ impl AngelThumpProvider {
         }
 
         if !status.is_success() {
-            return Err(ProviderError::HttpError(format!("AngelThump API error {}", status)));
+            return Err(ProviderError::HttpError(format!(
+                "AngelThump API error {}",
+                status
+            )));
         }
 
         // API returns an array, take first element
-        let users: Vec<AngelThumpUser> = response
-            .json()
-            .await
-            .map_err(|e| ProviderError::ParseError(format!("Failed to parse AngelThump user response: {}", e)))?;
+        let users: Vec<AngelThumpUser> = response.json().await.map_err(|e| {
+            ProviderError::ParseError(format!("Failed to parse AngelThump user response: {}", e))
+        })?;
 
-        users.into_iter().next()
+        users
+            .into_iter()
+            .next()
             .ok_or_else(|| ProviderError::StreamerNotFound(username.to_string()))
     }
 
     /// Fetch stream info from AngelThump API (uses query params, returns array)
-    async fn fetch_stream_info(&self, username: &str) -> Result<Option<AngelThumpStream>, ProviderError> {
+    async fn fetch_stream_info(
+        &self,
+        username: &str,
+    ) -> Result<Option<AngelThumpStream>, ProviderError> {
         debug!("Fetching AngelThump stream: {}", username);
 
-        let url = format!("https://api.angelthump.com/v3/streams/?username={}", username);
-        
-        let response = self.client
-            .get(&url)
-            .send()
-            .await
-            .map_err(|e| ProviderError::HttpError(format!("Failed to fetch AngelThump stream: {}", e)))?;
+        let url = format!(
+            "https://api.angelthump.com/v3/streams/?username={}",
+            username
+        );
+
+        let response = self.client.get(&url).send().await.map_err(|e| {
+            ProviderError::HttpError(format!("Failed to fetch AngelThump stream: {}", e))
+        })?;
 
         let status = response.status();
         if status == 404 {
@@ -83,10 +85,9 @@ impl AngelThumpProvider {
         }
 
         // API returns an array
-        let streams: Vec<AngelThumpStream> = response
-            .json()
-            .await
-            .map_err(|_| ProviderError::ParseError("Failed to parse stream response".to_string()))?;
+        let streams: Vec<AngelThumpStream> = response.json().await.map_err(|_| {
+            ProviderError::ParseError("Failed to parse stream response".to_string())
+        })?;
 
         Ok(streams.into_iter().next())
     }
@@ -127,13 +128,16 @@ impl PlatformProvider for AngelThumpProvider {
         Ok(stream_info)
     }
 
-    async fn fetch_streams_batch(&self, user_ids: &[String]) -> Vec<Result<StreamInfo, ProviderError>> {
+    async fn fetch_streams_batch(
+        &self,
+        user_ids: &[String],
+    ) -> Vec<Result<StreamInfo, ProviderError>> {
         let mut results = Vec::with_capacity(user_ids.len());
-        
+
         for user_id in user_ids {
             results.push(self.fetch_stream(user_id).await);
         }
-        
+
         results
     }
 

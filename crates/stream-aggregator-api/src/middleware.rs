@@ -110,7 +110,10 @@ fn requires_auth(method: &Method, path: &str, config: &AuthConfig) -> bool {
             "/api/v1/groups",
         ];
 
-        if read_only_prefixes.iter().any(|&prefix| path.starts_with(prefix)) {
+        if read_only_prefixes
+            .iter()
+            .any(|&prefix| path.starts_with(prefix))
+        {
             return false;
         }
     }
@@ -146,10 +149,7 @@ pub async fn auth_middleware(
             warn!(method = %method, path = %path, "Invalid API key");
             Err((
                 StatusCode::UNAUTHORIZED,
-                Json(ErrorResponse::new(
-                    "UNAUTHORIZED",
-                    "Invalid API key",
-                )),
+                Json(ErrorResponse::new("UNAUTHORIZED", "Invalid API key")),
             ))
         }
         None => {
@@ -184,7 +184,10 @@ mod tests {
     #[test]
     fn test_extract_api_key_from_bearer() {
         let mut headers = HeaderMap::new();
-        headers.insert("Authorization", HeaderValue::from_static("Bearer test-key-456"));
+        headers.insert(
+            "Authorization",
+            HeaderValue::from_static("Bearer test-key-456"),
+        );
 
         let uri = Uri::from_static("/api/v1/streams");
         let key = extract_api_key(&headers, &uri);
@@ -219,7 +222,11 @@ mod tests {
 
         // Write endpoints require auth
         assert!(requires_auth(&Method::POST, "/api/v1/streamers", &config));
-        assert!(requires_auth(&Method::DELETE, "/api/v1/streamers/twitch/user", &config));
+        assert!(requires_auth(
+            &Method::DELETE,
+            "/api/v1/streamers/twitch/user",
+            &config
+        ));
     }
 
     #[test]
@@ -241,6 +248,10 @@ mod tests {
         // Nothing requires auth when disabled
         assert!(!requires_auth(&Method::GET, "/api/v1/streams", &config));
         assert!(!requires_auth(&Method::POST, "/api/v1/streamers", &config));
-        assert!(!requires_auth(&Method::DELETE, "/api/v1/streamers/twitch/user", &config));
+        assert!(!requires_auth(
+            &Method::DELETE,
+            "/api/v1/streamers/twitch/user",
+            &config
+        ));
     }
 }

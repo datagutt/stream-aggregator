@@ -92,102 +92,102 @@ impl ProviderRegistry {
         }
     }
 
-	/// Register all enabled providers from configuration
-	pub async fn register_all(config: &ProvidersConfig) -> Result<Self> {
-		let mut registry = Self::new();
+    /// Register all enabled providers from configuration
+    pub async fn register_all(config: &ProvidersConfig) -> Result<Self> {
+        let mut registry = Self::new();
 
-		register_providers!(registry, config, [
-			{
-				feature: "provider-twitch",
-				provider: TwitchProvider,
-				config_type: crate::config::TwitchProviderConfig,
-				config_field: twitch,
-				name: "Twitch",
-				init: |cfg: crate::config::TwitchProviderConfig| async {
-					let (Some(client_id), Some(client_secret)) = (cfg.client_id, cfg.client_secret) else {
-						anyhow::bail!("Missing credentials - set TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET");
-					};
-					let twitch_config = TwitchConfig::new(client_id, client_secret);
-					Ok(TwitchProvider::new(twitch_config))
-				}
-			},
-			{
-				feature: "provider-youtube",
-				provider: YouTubeProvider,
-				config_type: crate::config::YouTubeProviderConfig,
-				config_field: youtube,
-				name: "YouTube",
-				init: |_cfg: crate::config::YouTubeProviderConfig| async {
-					let youtube_config = YouTubeConfig::default();
-					Ok::<YouTubeProvider, anyhow::Error>(YouTubeProvider::new(youtube_config))
-				}
-			},
-			{
-				feature: "provider-kick",
-				provider: KickProvider,
-				config_type: crate::config::KickProviderConfig,
-				config_field: kick,
-				name: "Kick",
-				init: |_cfg: crate::config::KickProviderConfig| async {
-					let kick_config = KickConfig::default();
-					KickProvider::new(kick_config).map_err(|e| anyhow::anyhow!("Failed to create Kick provider: {}", e))
-				}
-			},
-			{
-				feature: "provider-dlive",
-				provider: DLiveProvider,
-				config_type: crate::config::DLiveProviderConfig,
-				config_field: dlive,
-				name: "DLive",
-				init: |_cfg: crate::config::DLiveProviderConfig| async {
-					let dlive_config = DLiveConfig::default();
-					Ok::<DLiveProvider, anyhow::Error>(DLiveProvider::new(dlive_config))
-				}
-			},
-			{
-				feature: "provider-trovo",
-				provider: TrovoProvider,
-				config_type: crate::config::TrovoProviderConfig,
-				config_field: trovo,
-				name: "Trovo",
-				init: |_cfg: crate::config::TrovoProviderConfig| async {
-					let trovo_config = TrovoConfig::default();
-					Ok::<TrovoProvider, anyhow::Error>(TrovoProvider::new(trovo_config))
-				}
-			},
-			{
-				feature: "provider-guac",
-				provider: GuacProvider,
-				config_type: crate::config::GuacProviderConfig,
-				config_field: guac,
-				name: "Guac",
-				init: |_cfg: crate::config::GuacProviderConfig| async {
-					let guac_config = GuacConfig::default();
-					Ok::<GuacProvider, anyhow::Error>(GuacProvider::new(guac_config))
-				}
-			},
-			{
-				feature: "provider-angelthump",
-				provider: AngelThumpProvider,
-				config_type: crate::config::AngelThumpProviderConfig,
-				config_field: angelthump,
-				name: "AngelThump",
-				init: |_cfg: crate::config::AngelThumpProviderConfig| async {
-					let angelthump_config = AngelThumpConfig::default();
-					Ok::<AngelThumpProvider, anyhow::Error>(AngelThumpProvider::new(angelthump_config))
-				}
-			},
-			{
-				feature: "provider-robotstreamer",
-				provider: RobotStreamerProvider,
-				config_type: crate::config::RobotStreamerProviderConfig,
-				config_field: robotstreamer,
-				name: "RobotStreamer",
-				init: |_cfg: crate::config::RobotStreamerProviderConfig| async {
-					let robotstreamer_config = RobotStreamerConfig::default();
-					Ok::<RobotStreamerProvider, anyhow::Error>(RobotStreamerProvider::new(robotstreamer_config))
-				}
-			},
+        register_providers!(registry, config, [
+            {
+                feature: "provider-twitch",
+                provider: TwitchProvider,
+                config_type: crate::config::TwitchProviderConfig,
+                config_field: twitch,
+                name: "Twitch",
+                init: |cfg: crate::config::TwitchProviderConfig| async {
+                    let (Some(client_id), Some(client_secret)) = (cfg.client_id, cfg.client_secret) else {
+                        anyhow::bail!("Missing credentials - set TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET");
+                    };
+                    let twitch_config = TwitchConfig::new(client_id, client_secret);
+                    Ok(TwitchProvider::new(twitch_config))
+                }
+            },
+            {
+                feature: "provider-youtube",
+                provider: YouTubeProvider,
+                config_type: crate::config::YouTubeProviderConfig,
+                config_field: youtube,
+                name: "YouTube",
+                init: |_cfg: crate::config::YouTubeProviderConfig| async {
+                    let youtube_config = YouTubeConfig::default();
+                    Ok::<YouTubeProvider, anyhow::Error>(YouTubeProvider::new(youtube_config))
+                }
+            },
+            {
+                feature: "provider-kick",
+                provider: KickProvider,
+                config_type: crate::config::KickProviderConfig,
+                config_field: kick,
+                name: "Kick",
+                init: |_cfg: crate::config::KickProviderConfig| async {
+                    let kick_config = KickConfig::default();
+                    KickProvider::new(kick_config).map_err(|e| anyhow::anyhow!("Failed to create Kick provider: {}", e))
+                }
+            },
+            {
+                feature: "provider-dlive",
+                provider: DLiveProvider,
+                config_type: crate::config::DLiveProviderConfig,
+                config_field: dlive,
+                name: "DLive",
+                init: |_cfg: crate::config::DLiveProviderConfig| async {
+                    let dlive_config = DLiveConfig::default();
+                    Ok::<DLiveProvider, anyhow::Error>(DLiveProvider::new(dlive_config))
+                }
+            },
+            {
+                feature: "provider-trovo",
+                provider: TrovoProvider,
+                config_type: crate::config::TrovoProviderConfig,
+                config_field: trovo,
+                name: "Trovo",
+                init: |_cfg: crate::config::TrovoProviderConfig| async {
+                    let trovo_config = TrovoConfig::default();
+                    Ok::<TrovoProvider, anyhow::Error>(TrovoProvider::new(trovo_config))
+                }
+            },
+            {
+                feature: "provider-guac",
+                provider: GuacProvider,
+                config_type: crate::config::GuacProviderConfig,
+                config_field: guac,
+                name: "Guac",
+                init: |_cfg: crate::config::GuacProviderConfig| async {
+                    let guac_config = GuacConfig::default();
+                    Ok::<GuacProvider, anyhow::Error>(GuacProvider::new(guac_config))
+                }
+            },
+            {
+                feature: "provider-angelthump",
+                provider: AngelThumpProvider,
+                config_type: crate::config::AngelThumpProviderConfig,
+                config_field: angelthump,
+                name: "AngelThump",
+                init: |_cfg: crate::config::AngelThumpProviderConfig| async {
+                    let angelthump_config = AngelThumpConfig::default();
+                    Ok::<AngelThumpProvider, anyhow::Error>(AngelThumpProvider::new(angelthump_config))
+                }
+            },
+            {
+                feature: "provider-robotstreamer",
+                provider: RobotStreamerProvider,
+                config_type: crate::config::RobotStreamerProviderConfig,
+                config_field: robotstreamer,
+                name: "RobotStreamer",
+                init: |_cfg: crate::config::RobotStreamerProviderConfig| async {
+                    let robotstreamer_config = RobotStreamerConfig::default();
+                    Ok::<RobotStreamerProvider, anyhow::Error>(RobotStreamerProvider::new(robotstreamer_config))
+                }
+            },
 			{
 				feature: "provider-tiktok",
 				provider: TikTokProvider,
@@ -195,22 +195,25 @@ impl ProviderRegistry {
 				config_field: tiktok,
 				name: "TikTok",
 				init: |cfg: crate::config::TikTokProviderConfig| async {
-					let tiktok_config = TikTokConfig {
-						node_path: cfg.node_path,
-						bridge_path: cfg.bridge_path,
-					};
-					Ok::<TikTokProvider, anyhow::Error>(TikTokProvider::new(tiktok_config))
+					let mut tiktok_config = TikTokConfig::default();
+					if let Some(bridge_url) = cfg.bridge_url {
+						tiktok_config.bridge_url = bridge_url;
+					}
+					if let Some(bridge_path) = cfg.bridge_path {
+						tiktok_config.bridge_path = Some(bridge_path);
+					}
+					TikTokProvider::new(tiktok_config).await
 				}
 			},
-		]);
+        ]);
 
-		if registry.providers.is_empty() {
-			anyhow::bail!("No providers configured! At least one provider must be enabled.");
-		}
+        if registry.providers.is_empty() {
+            anyhow::bail!("No providers configured! At least one provider must be enabled.");
+        }
 
-		info!("✅ {} provider(s) initialized", registry.providers.len());
-		Ok(registry)
-	}
+        info!("✅ {} provider(s) initialized", registry.providers.len());
+        Ok(registry)
+    }
 
     /// Get a provider by platform ID
     pub fn get(&self, platform_id: &str) -> Option<Arc<dyn PlatformProvider>> {
@@ -247,13 +250,17 @@ impl ProviderRegistry {
 
     /// Register Twitch provider if configured
     #[cfg(feature = "provider-twitch")]
-    async fn register_twitch(&mut self, config: &crate::config::TwitchProviderConfig) -> Result<()> {
+    async fn register_twitch(
+        &mut self,
+        config: &crate::config::TwitchProviderConfig,
+    ) -> Result<()> {
         if !config.enabled {
             info!("⏭️  Twitch provider disabled in configuration");
             return Ok(());
         }
 
-        let (Some(client_id), Some(client_secret)) = (&config.client_id, &config.client_secret) else {
+        let (Some(client_id), Some(client_secret)) = (&config.client_id, &config.client_secret)
+        else {
             warn!("⚠️  Twitch provider disabled (missing credentials)");
             info!("   Set TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET to enable");
             return Ok(());

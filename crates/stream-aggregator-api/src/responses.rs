@@ -102,13 +102,13 @@ impl IntoResponse for ApiErrorResponse {
                 "STORE_ERROR",
                 e.to_string(),
             ),
-            ApiError::ProviderError(e) => (
-                StatusCode::BAD_GATEWAY,
-                "PROVIDER_ERROR",
-                e.to_string(),
-            ),
+            ApiError::ProviderError(e) => {
+                (StatusCode::BAD_GATEWAY, "PROVIDER_ERROR", e.to_string())
+            }
             ApiError::BadRequest(msg) => (StatusCode::BAD_REQUEST, "BAD_REQUEST", msg.clone()),
-            ApiError::InvalidRequest(msg) => (StatusCode::BAD_REQUEST, "INVALID_REQUEST", msg.clone()),
+            ApiError::InvalidRequest(msg) => {
+                (StatusCode::BAD_REQUEST, "INVALID_REQUEST", msg.clone())
+            }
             ApiError::Unauthorized => (
                 StatusCode::UNAUTHORIZED,
                 "UNAUTHORIZED",

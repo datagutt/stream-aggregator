@@ -79,7 +79,11 @@ pub struct StreamInfo {
 
 impl StreamInfo {
     /// Create a new StreamInfo with required fields
-    pub fn new(platform: impl Into<String>, user_id: impl Into<String>, display_name: impl Into<String>) -> Self {
+    pub fn new(
+        platform: impl Into<String>,
+        user_id: impl Into<String>,
+        display_name: impl Into<String>,
+    ) -> Self {
         let platform = platform.into();
         let user_id = user_id.into();
         let id = StreamId::new(&platform, &user_id);
@@ -243,7 +247,11 @@ pub struct DiscoveryRule {
 
 impl DiscoveryRule {
     /// Create a new discovery rule
-    pub fn new(id: impl Into<String>, name: impl Into<String>, platform: impl Into<String>) -> Self {
+    pub fn new(
+        id: impl Into<String>,
+        name: impl Into<String>,
+        platform: impl Into<String>,
+    ) -> Self {
         Self {
             id: id.into(),
             name: name.into(),

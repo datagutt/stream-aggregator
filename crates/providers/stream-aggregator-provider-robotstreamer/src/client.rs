@@ -5,11 +5,7 @@ use chrono::Utc;
 use tracing::debug;
 use wreq::Client;
 
-use stream_aggregator_core::{
-    errors::ProviderError,
-    models::*,
-    traits::PlatformProvider,
-};
+use stream_aggregator_core::{errors::ProviderError, models::*, traits::PlatformProvider};
 
 use crate::models::{RobotStreamerConfig, RobotStreamerRobot};
 
@@ -34,13 +30,14 @@ impl RobotStreamerProvider {
         debug!("Fetching RobotStreamer robot: {}", robot_id);
 
         // RobotStreamer uses HTTP (not HTTPS) and specific port 8080
-        let url = format!("http://api.robotstreamer.com:8080/v1/get_robot/{}", robot_id);
-        
-        let response = self.client
-            .get(&url)
-            .send()
-            .await
-            .map_err(|e| ProviderError::HttpError(format!("Failed to fetch RobotStreamer robot: {}", e)))?;
+        let url = format!(
+            "http://api.robotstreamer.com:8080/v1/get_robot/{}",
+            robot_id
+        );
+
+        let response = self.client.get(&url).send().await.map_err(|e| {
+            ProviderError::HttpError(format!("Failed to fetch RobotStreamer robot: {}", e))
+        })?;
 
         let status = response.status();
         if status == 404 {
@@ -48,16 +45,20 @@ impl RobotStreamerProvider {
         }
 
         if !status.is_success() {
-            return Err(ProviderError::HttpError(format!("RobotStreamer API error {}", status)));
+            return Err(ProviderError::HttpError(format!(
+                "RobotStreamer API error {}",
+                status
+            )));
         }
 
         // API returns an array, take first element
-        let robots: Vec<RobotStreamerRobot> = response
-            .json()
-            .await
-            .map_err(|e| ProviderError::ParseError(format!("Failed to parse RobotStreamer response: {}", e)))?;
+        let robots: Vec<RobotStreamerRobot> = response.json().await.map_err(|e| {
+            ProviderError::ParseError(format!("Failed to parse RobotStreamer response: {}", e))
+        })?;
 
-        robots.into_iter().next()
+        robots
+            .into_iter()
+            .next()
             .ok_or_else(|| ProviderError::StreamerNotFound(robot_id.to_string()))
     }
 }
@@ -84,7 +85,9 @@ impl PlatformProvider for RobotStreamerProvider {
         let robot = self.fetch_robot(user_id).await?;
 
         // Status indicates if robot is live (e.g., "live" or "offline")
-        let is_live = robot.status.as_ref()
+        let is_live = robot
+            .status
+            .as_ref()
             .map(|s| s.to_lowercase() == "live" || s == "1")
             .unwrap_or(false);
 
@@ -98,13 +101,16 @@ impl PlatformProvider for RobotStreamerProvider {
         Ok(stream_info)
     }
 
-    async fn fetch_streams_batch(&self, user_ids: &[String]) -> Vec<Result<StreamInfo, ProviderError>> {
+    async fn fetch_streams_batch(
+        &self,
+        user_ids: &[String],
+    ) -> Vec<Result<StreamInfo, ProviderError>> {
         let mut results = Vec::with_capacity(user_ids.len());
-        
+
         for user_id in user_ids {
             results.push(self.fetch_stream(user_id).await);
         }
-        
+
         results
     }
 

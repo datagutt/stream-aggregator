@@ -6,13 +6,9 @@ use serde_json::json;
 use tracing::{debug, error};
 use wreq::Client;
 
-use stream_aggregator_core::{
-    errors::ProviderError,
-    models::*,
-    traits::PlatformProvider,
-};
+use stream_aggregator_core::{errors::ProviderError, models::*, traits::PlatformProvider};
 
-use crate::models::{TrovoConfig, GetUsersResponse, ChannelIdResponse};
+use crate::models::{ChannelIdResponse, GetUsersResponse, TrovoConfig};
 
 const TROVO_API_BASE: &str = "https://open-api.trovo.live/openplatform";
 
@@ -42,7 +38,8 @@ impl TrovoProvider {
             "user": [username]
         });
 
-        let response = self.client
+        let response = self
+            .client
             .post(&url)
             .header("Client-ID", &self.config.client_id)
             .header("Content-Type", "application/json")
@@ -59,22 +56,30 @@ impl TrovoProvider {
         if !status.is_success() {
             let body_text = response.text().await.unwrap_or_default();
             error!("Trovo API error {}: {}", status, body_text);
-            return Err(ProviderError::HttpError(format!("Trovo API error {}", status)));
+            return Err(ProviderError::HttpError(format!(
+                "Trovo API error {}",
+                status
+            )));
         }
 
-        let user_response: GetUsersResponse = response
-            .json()
-            .await
-            .map_err(|e| ProviderError::ParseError(format!("Failed to parse Trovo user response: {}", e)))?;
+        let user_response: GetUsersResponse = response.json().await.map_err(|e| {
+            ProviderError::ParseError(format!("Failed to parse Trovo user response: {}", e))
+        })?;
 
-        let user = user_response.users.into_iter().next()
+        let user = user_response
+            .users
+            .into_iter()
+            .next()
             .ok_or_else(|| ProviderError::StreamerNotFound(username.to_string()))?;
 
         Ok(user.channel_id)
     }
 
     /// Step 2: Fetch channel by channel_id
-    async fn fetch_channel_by_id(&self, channel_id: &str) -> Result<ChannelIdResponse, ProviderError> {
+    async fn fetch_channel_by_id(
+        &self,
+        channel_id: &str,
+    ) -> Result<ChannelIdResponse, ProviderError> {
         debug!("Fetching Trovo channel by ID: {}", channel_id);
 
         let url = format!("{}/channels/id", TROVO_API_BASE);
@@ -82,26 +87,31 @@ impl TrovoProvider {
             "channel_id": channel_id
         });
 
-        let response = self.client
+        let response = self
+            .client
             .post(&url)
             .header("Client-ID", &self.config.client_id)
             .header("Content-Type", "application/json")
             .json(&body)
             .send()
             .await
-            .map_err(|e| ProviderError::HttpError(format!("Failed to fetch Trovo channel: {}", e)))?;
+            .map_err(|e| {
+                ProviderError::HttpError(format!("Failed to fetch Trovo channel: {}", e))
+            })?;
 
         let status = response.status();
         if !status.is_success() {
             let body_text = response.text().await.unwrap_or_default();
             error!("Trovo API error {}: {}", status, body_text);
-            return Err(ProviderError::HttpError(format!("Trovo API error {}", status)));
+            return Err(ProviderError::HttpError(format!(
+                "Trovo API error {}",
+                status
+            )));
         }
 
-        let channel_response: ChannelIdResponse = response
-            .json()
-            .await
-            .map_err(|e| ProviderError::ParseError(format!("Failed to parse Trovo channel response: {}", e)))?;
+        let channel_response: ChannelIdResponse = response.json().await.map_err(|e| {
+            ProviderError::ParseError(format!("Failed to parse Trovo channel response: {}", e))
+        })?;
 
         Ok(channel_response)
     }
@@ -147,7 +157,10 @@ impl PlatformProvider for TrovoProvider {
         Ok(stream_info)
     }
 
-    async fn fetch_streams_batch(&self, user_ids: &[String]) -> Vec<Result<StreamInfo, ProviderError>> {
+    async fn fetch_streams_batch(
+        &self,
+        user_ids: &[String],
+    ) -> Vec<Result<StreamInfo, ProviderError>> {
         // Trovo requires two-step lookup per user (no batch support for channels/id)
         let mut results = Vec::with_capacity(user_ids.len());
 

@@ -14,5 +14,5 @@ mod responses;
 mod router;
 
 pub use middleware::AuthConfig;
-pub use router::{create_router, create_router_with_auth};
 pub use responses::*;
+pub use router::{create_router, create_router_with_auth};

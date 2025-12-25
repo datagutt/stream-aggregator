@@ -5,11 +5,7 @@ use chrono::Utc;
 use tracing::debug;
 use wreq::Client;
 
-use stream_aggregator_core::{
-    errors::ProviderError,
-    models::*,
-    traits::PlatformProvider,
-};
+use stream_aggregator_core::{errors::ProviderError, models::*, traits::PlatformProvider};
 
 use crate::models::{GuacConfig, GuacResponse};
 
@@ -35,12 +31,11 @@ impl GuacProvider {
 
         // Guac uses api.guac.tv, not guac.live for API calls
         let url = format!("https://api.guac.tv/v2/stream/{}", user_id);
-        
-        let response = self.client
-            .get(&url)
-            .send()
-            .await
-            .map_err(|e| ProviderError::HttpError(format!("Failed to fetch Guac stream: {}", e)))?;
+
+        let response =
+            self.client.get(&url).send().await.map_err(|e| {
+                ProviderError::HttpError(format!("Failed to fetch Guac stream: {}", e))
+            })?;
 
         let status = response.status();
         if status == 404 {
@@ -48,13 +43,15 @@ impl GuacProvider {
         }
 
         if !status.is_success() {
-            return Err(ProviderError::HttpError(format!("Guac API error {}", status)));
+            return Err(ProviderError::HttpError(format!(
+                "Guac API error {}",
+                status
+            )));
         }
 
-        let api_response: GuacResponse = response
-            .json()
-            .await
-            .map_err(|e| ProviderError::ParseError(format!("Failed to parse Guac response: {}", e)))?;
+        let api_response: GuacResponse = response.json().await.map_err(|e| {
+            ProviderError::ParseError(format!("Failed to parse Guac response: {}", e))
+        })?;
 
         Ok(api_response)
     }
@@ -93,13 +90,16 @@ impl PlatformProvider for GuacProvider {
         Ok(stream_info)
     }
 
-    async fn fetch_streams_batch(&self, user_ids: &[String]) -> Vec<Result<StreamInfo, ProviderError>> {
+    async fn fetch_streams_batch(
+        &self,
+        user_ids: &[String],
+    ) -> Vec<Result<StreamInfo, ProviderError>> {
         let mut results = Vec::with_capacity(user_ids.len());
-        
+
         for user_id in user_ids {
             results.push(self.fetch_stream(user_id).await);
         }
-        
+
         results
     }
 

@@ -8,13 +8,9 @@ use tracing::{debug, error, warn};
 use wreq::Client;
 use wreq_util::Emulation;
 
-use stream_aggregator_core::{
-    errors::ProviderError,
-    models::*,
-    traits::PlatformProvider,
-};
+use stream_aggregator_core::{errors::ProviderError, models::*, traits::PlatformProvider};
 
-use crate::models::{KickConfig, KickChannel};
+use crate::models::{KickChannel, KickConfig};
 
 const KICK_API_BASE: &str = "https://kick.com/api";
 
@@ -32,10 +28,12 @@ impl KickProvider {
     /// Create a new Kick provider with browser emulation
     pub fn new(config: KickConfig) -> Result<Self, ProviderError> {
         // Create wreq client with Chrome 131 emulation to bypass Cloudflare
-let client = Client::builder()
+        let client = Client::builder()
             .emulation(Emulation::Chrome131)
             .build()
-            .map_err(|e| ProviderError::InternalError(format!("Failed to create Kick client: {}", e)))?;
+            .map_err(|e| {
+                ProviderError::InternalError(format!("Failed to create Kick client: {}", e))
+            })?;
 
         Ok(Self {
             client,
@@ -54,12 +52,15 @@ let client = Client::builder()
 
         // Need to fetch XSRF token
         debug!("Fetching Kick XSRF token");
-        
-        let response = self.client
+
+        let response = self
+            .client
             .get("https://kick.com")
             .send()
             .await
-            .map_err(|e| ProviderError::HttpError(format!("Failed to fetch Kick homepage: {}", e)))?;
+            .map_err(|e| {
+                ProviderError::HttpError(format!("Failed to fetch Kick homepage: {}", e))
+            })?;
 
         // Extract XSRF token from response headers
         let mut token_value = None;
@@ -68,7 +69,8 @@ let client = Client::builder()
                 for cookie in cookie_str.split(';') {
                     let cookie = cookie.trim();
                     if cookie.starts_with("XSRF-TOKEN=") {
-                        token_value = Some(cookie.strip_prefix("XSRF-TOKEN=").unwrap_or("").to_string());
+                        token_value =
+                            Some(cookie.strip_prefix("XSRF-TOKEN=").unwrap_or("").to_string());
                         break;
                     }
                 }
@@ -99,24 +101,26 @@ let client = Client::builder()
         //self.ensure_xsrf_token().await?;
 
         let url = format!("{}/v2/channels/{}", KICK_API_BASE, username);
-        
+
         let mut request = self.client.get(&url);
-        
+
         // Add XSRF token if we have one
         if let Some(token) = self.get_xsrf_token().await {
             request = request.header("X-XSRF-TOKEN", token);
         }
 
-        let response = request
-            .send()
-            .await
-            .map_err(|e| ProviderError::HttpError(format!("Failed to fetch Kick channel: {}", e)))?;
+        let response = request.send().await.map_err(|e| {
+            ProviderError::HttpError(format!("Failed to fetch Kick channel: {}", e))
+        })?;
 
         let status = response.status();
-        
+
         if status == 403 || status == 429 {
             // Rate limited or blocked by Cloudflare
-            warn!("Kick API returned {}, possible rate limit or Cloudflare block", status);
+            warn!(
+                "Kick API returned {}, possible rate limit or Cloudflare block",
+                status
+            );
             return Err(ProviderError::RateLimitExceeded);
         }
 
@@ -127,13 +131,15 @@ let client = Client::builder()
         if !status.is_success() {
             let body = response.text().await.unwrap_or_default();
             error!("Kick API error {}: {}", status, body);
-            return Err(ProviderError::HttpError(format!("Kick API error {}: {}", status, body)));
+            return Err(ProviderError::HttpError(format!(
+                "Kick API error {}: {}",
+                status, body
+            )));
         }
 
-        let channel: KickChannel = response
-            .json()
-            .await
-            .map_err(|e| ProviderError::ParseError(format!("Failed to parse Kick channel response: {}", e)))?;
+        let channel: KickChannel = response.json().await.map_err(|e| {
+            ProviderError::ParseError(format!("Failed to parse Kick channel response: {}", e))
+        })?;
 
         Ok(channel)
     }
@@ -162,7 +168,7 @@ impl PlatformProvider for KickProvider {
         let channel = self.fetch_channel(user_id).await?;
 
         let mut stream_info = StreamInfo::new("kick", &channel.slug, &channel.user.username);
-        
+
         // Set avatar
         if let Some(profile_pic) = channel.user.profile_pic {
             stream_info.avatar_url = Some(profile_pic);
@@ -200,17 +206,20 @@ impl PlatformProvider for KickProvider {
         Ok(stream_info)
     }
 
-    async fn fetch_streams_batch(&self, user_ids: &[String]) -> Vec<Result<StreamInfo, ProviderError>> {
+    async fn fetch_streams_batch(
+        &self,
+        user_ids: &[String],
+    ) -> Vec<Result<StreamInfo, ProviderError>> {
         // Kick doesn't have a batch API, fetch sequentially with delays
         let mut results = Vec::with_capacity(user_ids.len());
-        
+
         for user_id in user_ids {
             results.push(self.fetch_stream(user_id).await);
-            
+
             // Add delay to avoid rate limiting
             tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
         }
-        
+
         results
     }
 

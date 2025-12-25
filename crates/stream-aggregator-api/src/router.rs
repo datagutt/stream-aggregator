@@ -10,7 +10,7 @@ use std::sync::Arc;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 
-use stream_aggregator_core::traits::{StreamStore, PlatformProvider};
+use stream_aggregator_core::traits::{PlatformProvider, StreamStore};
 
 use crate::handlers::*;
 use crate::middleware::{auth_middleware, AuthConfig};
@@ -51,10 +51,7 @@ pub fn create_router_with_auth(
         .route("/api/v1/platforms", get(list_platforms))
         .with_state(state)
         // Apply authentication middleware
-        .layer(middleware::from_fn_with_state(
-            auth_config,
-            auth_middleware,
-        ))
+        .layer(middleware::from_fn_with_state(auth_config, auth_middleware))
         // Apply CORS and tracing
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http())

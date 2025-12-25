@@ -13,7 +13,7 @@ use stream_aggregator_core::{PlatformProvider, StreamStore, TrackedStreamerQuery
 pub struct SchedulerConfig {
     /// How often to scrape each streamer (in seconds)
     pub scrape_interval_secs: u64,
-    
+
     /// Maximum concurrent scrapes
     pub max_concurrent: usize,
 }
@@ -72,7 +72,7 @@ impl Scheduler {
 
         loop {
             ticker.tick().await;
-            
+
             if let Err(e) = self.scrape_all().await {
                 error!("Scrape cycle failed: {}", e);
             }
@@ -122,18 +122,19 @@ impl Scheduler {
 
             let store = self.store.clone();
             let metadata = streamer_metadata.clone();
-            let task = tokio::spawn(async move {
-                scrape_platform(provider, store, user_ids, metadata).await
-            });
+            let task =
+                tokio::spawn(
+                    async move { scrape_platform(provider, store, user_ids, metadata).await },
+                );
             tasks.push(task);
         }
 
         // Wait for all platforms to complete
         let results = futures::future::join_all(tasks).await;
-        
+
         let mut total_success = 0;
         let mut total_failed = 0;
-        
+
         for result in results {
             match result {
                 Ok((success, failed)) => {
@@ -179,36 +180,38 @@ async fn scrape_platform(
         match result {
             Ok(mut stream_info) => {
                 // Enrich stream metadata with tracked streamer metadata
-                if let Some(tracked) = streamer_metadata.get(&(stream_info.platform.clone(), stream_info.user_id.clone())) {
+                if let Some(tracked) = streamer_metadata
+                    .get(&(stream_info.platform.clone(), stream_info.user_id.clone()))
+                {
                     // Add group to metadata
                     if let Some(ref group) = tracked.group {
                         stream_info.metadata.insert(
                             "group".to_string(),
-                            serde_json::Value::String(group.clone())
+                            serde_json::Value::String(group.clone()),
                         );
                     }
-                    
+
                     // Add priority to metadata
                     if let Some(priority) = tracked.priority {
                         stream_info.metadata.insert(
                             "priority".to_string(),
-                            serde_json::Value::Number(priority.into())
+                            serde_json::Value::Number(priority.into()),
                         );
                     }
-                    
+
                     // Add labels to metadata
                     if !tracked.labels.is_empty() {
-                        let labels_map: serde_json::Map<String, serde_json::Value> = tracked.labels
+                        let labels_map: serde_json::Map<String, serde_json::Value> = tracked
+                            .labels
                             .iter()
                             .map(|(k, v)| (k.clone(), serde_json::Value::String(v.clone())))
                             .collect();
-                        stream_info.metadata.insert(
-                            "labels".to_string(),
-                            serde_json::Value::Object(labels_map)
-                        );
+                        stream_info
+                            .metadata
+                            .insert("labels".to_string(), serde_json::Value::Object(labels_map));
                     }
                 }
-                
+
                 // Store the enriched stream information
                 match store.upsert_stream(&stream_info).await {
                     Ok(_) => {
@@ -216,7 +219,11 @@ async fn scrape_platform(
                             "{}: {} is {}",
                             platform_id,
                             stream_info.display_name,
-                            if stream_info.is_live { "LIVE" } else { "offline" }
+                            if stream_info.is_live {
+                                "LIVE"
+                            } else {
+                                "offline"
+                            }
                         );
                         success_count += 1;
                     }

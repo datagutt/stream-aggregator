@@ -5,11 +5,7 @@ use chrono::Utc;
 use tracing::{debug, error};
 use wreq::Client;
 
-use stream_aggregator_core::{
-    errors::ProviderError,
-    models::*,
-    traits::PlatformProvider,
-};
+use stream_aggregator_core::{errors::ProviderError, models::*, traits::PlatformProvider};
 
 use crate::models::{DLiveConfig, GraphQLResponse};
 
@@ -30,8 +26,6 @@ impl DLiveProvider {
 
         Self { client }
     }
-
-
 
     /// Fetch user by display name
     async fn fetch_user(&self, display_name: &str) -> Result<GraphQLResponse, ProviderError> {
@@ -55,25 +49,30 @@ impl DLiveProvider {
             }
         });
 
-        let response = self.client
+        let response = self
+            .client
             .post(DLIVE_GRAPHQL_ENDPOINT)
             .header("Content-Type", "application/json")
             .json(&request)
             .send()
             .await
-            .map_err(|e| ProviderError::HttpError(format!("Failed to query DLive GraphQL: {}", e)))?;
+            .map_err(|e| {
+                ProviderError::HttpError(format!("Failed to query DLive GraphQL: {}", e))
+            })?;
 
         let status = response.status();
         if !status.is_success() {
             let body = response.text().await.unwrap_or_default();
             error!("DLive GraphQL error {}: {}", status, body);
-            return Err(ProviderError::HttpError(format!("DLive GraphQL error {}", status)));
+            return Err(ProviderError::HttpError(format!(
+                "DLive GraphQL error {}",
+                status
+            )));
         }
 
-        let gql_response: GraphQLResponse = response
-            .json()
-            .await
-            .map_err(|e| ProviderError::ParseError(format!("Failed to parse DLive response: {}", e)))?;
+        let gql_response: GraphQLResponse = response.json().await.map_err(|e| {
+            ProviderError::ParseError(format!("Failed to parse DLive response: {}", e))
+        })?;
 
         Ok(gql_response)
     }
@@ -130,14 +129,17 @@ impl PlatformProvider for DLiveProvider {
         Ok(stream_info)
     }
 
-    async fn fetch_streams_batch(&self, user_ids: &[String]) -> Vec<Result<StreamInfo, ProviderError>> {
+    async fn fetch_streams_batch(
+        &self,
+        user_ids: &[String],
+    ) -> Vec<Result<StreamInfo, ProviderError>> {
         // No batch API, fetch sequentially
         let mut results = Vec::with_capacity(user_ids.len());
-        
+
         for user_id in user_ids {
             results.push(self.fetch_stream(user_id).await);
         }
-        
+
         results
     }
 
