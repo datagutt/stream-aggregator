@@ -106,33 +106,22 @@ recovery_timeout_secs = 60
 # =============================================================================
 # Storage Configuration
 # =============================================================================
-[storage]
-# Storage backend: "memory", "sqlite", "postgres"
-backend = "memory"
+[store]
+# Storage backend: "memory", "diesel" (formerly "sqlite" or "postgres")
+# When using "diesel", the database type is determined by the connection URL
+backend = "diesel"
 
-[storage.sqlite]
-# SQLite database file path
-path = "./data/streams.db"
-# Enable WAL mode for better concurrency
-wal_mode = true
-# Connection pool size
-pool_size = 5
+# Database URL for Diesel ORM
+# SQLite example: "stream_aggregator.db" or "/path/to/database.db"
+# PostgreSQL example: "postgres://user:password@localhost:5432/stream_aggregator"
+# The URL format determines which database backend Diesel uses
+database_url = "stream_aggregator.db"
 
-[storage.postgres]
-# PostgreSQL connection URL
-url = "postgres://user:password@localhost:5432/stream_aggregator"
-# Connection pool size
-pool_size = 10
-# Connection timeout (seconds)
-connect_timeout_secs = 5
-
-[storage.cache]
-# Enable in-memory cache even with persistent storage
-enabled = true
-# Cache TTL for stream data (seconds)
-stream_ttl_secs = 60
-# Maximum cache entries
-max_entries = 10000
+# Note: Diesel automatically handles:
+# - Connection pooling (r2d2)
+# - Migrations (embedded, runs on startup)
+# - Type-safe queries
+# - Support for both SQLite and PostgreSQL with the same code
 
 # =============================================================================
 # Discovery Configuration
@@ -236,8 +225,10 @@ STREAM_AGG_PROVIDERS_TWITCH_CLIENT_ID=your_client_id
 STREAM_AGG_PROVIDERS_TWITCH_CLIENT_SECRET=your_secret
 
 # Storage
-STREAM_AGG_STORAGE_BACKEND=postgres
-STREAM_AGG_STORAGE_POSTGRES_URL=postgres://...
+STREAM_AGG_STORE_BACKEND=diesel
+STREAM_AGG_STORE_DATABASE_URL=postgres://user:pass@localhost/dbname
+# Or for SQLite:
+# STREAM_AGG_STORE_DATABASE_URL=./data/streams.db
 ```
 
 ### Configuration Loading

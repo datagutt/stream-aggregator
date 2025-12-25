@@ -112,6 +112,8 @@ All options can be set via environment variables or command line arguments:
 | `REQUIRE_AUTH_ALL` | `--require-auth-all` | `false` | Require auth for all requests (including reads) |
 | `TWITCH_CLIENT_ID` | `--twitch-client-id` | None | Twitch application client ID |
 | `TWITCH_CLIENT_SECRET` | `--twitch-client-secret` | None | Twitch application client secret |
+| `STORE_BACKEND` | `--store-backend` | `diesel` | Storage backend (memory, diesel) |
+| `DATABASE_URL` | `--database-url` | `stream_aggregator.db` | Database URL (SQLite path or postgres:// URL) |
 
 ## Usage Examples
 
@@ -125,14 +127,28 @@ export TWITCH_CLIENT_SECRET="..."
 cargo run --release
 ```
 
-### SQLite
+### With SQLite Storage (Persistent)
 
 ```bash
-# Anyone can read and write
+# Store data in SQLite database (survives restarts)
 export TWITCH_CLIENT_ID="..."
 export TWITCH_CLIENT_SECRET="..."
+export STORE_BACKEND="diesel"
+export DATABASE_URL="streams.db"
 
-cargo run --features sqlite-store -- --store-backend sqlite --database-url streams.db
+cargo run --release
+```
+
+### With PostgreSQL Storage (Production)
+
+```bash
+# Store data in PostgreSQL database
+export TWITCH_CLIENT_ID="..."
+export TWITCH_CLIENT_SECRET="..."
+export STORE_BACKEND="diesel"
+export DATABASE_URL="postgres://user:password@localhost:5432/stream_aggregator"
+
+cargo run --release
 ```
 
 ### Production Mode (Protected Writes)

@@ -20,7 +20,7 @@ default = [
 	"provider-angelthump",
 	"provider-robotstreamer",
 	"provider-tiktok",
-	"memory-store",
+	"diesel-sqlite",
 ]
 provider-twitch = ["stream-aggregator-provider-twitch"]
 provider-youtube = ["stream-aggregator-provider-youtube"]
@@ -32,8 +32,10 @@ provider-angelthump = ["stream-aggregator-provider-angelthump"]
 provider-robotstreamer = ["stream-aggregator-provider-robotstreamer"]
 provider-tiktok = ["stream-aggregator-provider-tiktok"]
 memory-store = ["stream-aggregator-store/memory"]
-sqlite-store = ["stream-aggregator-store/sqlite"]
-all-stores = ["memory-store", "sqlite-store"]
+diesel-store = ["stream-aggregator-store/diesel"]
+diesel-sqlite = ["diesel-store", "stream-aggregator-store/diesel-sqlite"]
+diesel-postgres = ["diesel-store", "stream-aggregator-store/diesel-postgres"]
+all-stores = ["memory-store", "diesel-sqlite", "diesel-postgres"]
 
 [dependencies]
 # Internal crates

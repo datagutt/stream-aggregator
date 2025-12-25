@@ -4,13 +4,15 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 repository.workspace = true
+description = "Storage backends for StreamAggregator (SQLite, libSQL/Turso, Memory)"
 
 [features]
 default = ["memory"]
 memory = ["dashmap"]
-sqlite = ["sqlx/sqlite"]
-postgres = ["sqlx/postgres"]
-all = ["memory", "sqlite", "postgres"]
+diesel = ["dep:diesel", "dep:r2d2", "dep:diesel_migrations"]
+diesel-sqlite = ["diesel"]
+diesel-postgres = ["diesel"]
+all = ["memory", "diesel-sqlite", "diesel-postgres"]
 
 [dependencies]
 stream-aggregator-core = { path = "../stream-aggregator-core" }
@@ -24,8 +26,13 @@ tracing = { workspace = true }
 
 # Optional dependencies
 dashmap = { workspace = true, optional = true }
-sqlx = { workspace = true, optional = true }
 moka = { workspace = true }
+
+# Diesel ORM with SQLite support
+diesel = { workspace = true, optional = true }
+r2d2 = { version = "0.8", optional = true }
+diesel_migrations = { workspace = true, optional = true }
 
 [dev-dependencies]
 tempfile = "3.8"
+tokio-test = { workspace = true }

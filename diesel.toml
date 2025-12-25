@@ -1,0 +1,9 @@
+# Diesel CLI configuration
+# See https://diesel.rs/guides/configuring-diesel-cli
+
+[print_schema]
+file = "crates/stream-aggregator-store/src/schema.rs"
+custom_type_derives = ["diesel::query_builder::QueryId", "Clone"]
+
+[migrations_directory]
+dir = "crates/stream-aggregator-store/migrations"

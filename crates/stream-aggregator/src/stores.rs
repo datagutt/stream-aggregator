@@ -7,8 +7,8 @@ use tracing::{info, warn};
 use stream_aggregator_core::traits::StreamStore;
 use stream_aggregator_store::MemoryStore;
 
-#[cfg(feature = "sqlite-store")]
-use stream_aggregator_store::SqliteStore;
+#[cfg(feature = "diesel-store")]
+use stream_aggregator_store::DieselStore;
 
 use crate::config::StoreConfig;
 
@@ -29,26 +29,25 @@ impl StoreRegistry {
                 Arc::new(store)
             }
 
-            #[cfg(feature = "sqlite-store")]
-            "sqlite" => {
+            #[cfg(feature = "diesel-store")]
+            "diesel" | "sqlite" => {
                 let database_url = config
                     .database_url
                     .as_deref()
                     .unwrap_or("stream_aggregator.db");
 
-                let store = SqliteStore::new(database_url)
-                    .await
-                    .map_err(|e| anyhow::anyhow!("Failed to initialize SQLite store: {}", e))?;
+                let store = DieselStore::new(database_url)
+                    .map_err(|e| anyhow::anyhow!("Failed to initialize Diesel store: {}", e))?;
                 info!(
-                    "✅ SQLite store initialized with database: {}",
+                    "✅ Diesel store initialized with database: {}",
                     database_url
                 );
                 Arc::new(store)
             }
 
-            #[cfg(not(feature = "sqlite-store"))]
-            "sqlite" => {
-                anyhow::bail!("SQLite store not available - enable 'sqlite-store' feature");
+            #[cfg(not(feature = "diesel-store"))]
+            "diesel" | "sqlite" => {
+                anyhow::bail!("Diesel store not available - enable 'diesel-store' feature");
             }
 
             other => {

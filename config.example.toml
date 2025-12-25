@@ -18,10 +18,20 @@ interval_secs = 300
 max_concurrent = 10
 
 [store]
-# Storage backend type ("memory", "sqlite", "postgres")
-backend = "memory"
-# Database connection URL (for sqlite/postgres)
-# database_url = "stream_aggregator.db"
+# Storage backend type: "memory" or "diesel"
+# - "memory": In-memory storage (data lost on restart)
+# - "diesel": Persistent storage using Diesel ORM
+backend = "diesel"
+
+# Database connection URL (used when backend = "diesel")
+# For SQLite (default): Path to database file
+database_url = "stream_aggregator.db"
+# For PostgreSQL: Full connection URL
+# database_url = "postgres://user:password@localhost:5432/stream_aggregator"
+#
+# Diesel automatically detects the database type from the URL format:
+# - "path/to/file.db" or ":memory:" → SQLite
+# - "postgres://..." → PostgreSQL
 
 [providers.twitch]
 enabled = true

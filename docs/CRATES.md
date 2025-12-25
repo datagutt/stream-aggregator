@@ -95,8 +95,9 @@ toml = "0.8"
 prost = "0.12"
 prost-types = "0.12"
 
-# Database
-sqlx = { version = "0.7", features = ["runtime-tokio", "sqlite", "postgres", "chrono", "uuid"] }
+# Database - Diesel ORM (supports SQLite and PostgreSQL)
+diesel = { version = "2.2", features = ["sqlite", "postgres", "r2d2", "chrono", "serde_json"] }
+diesel_migrations = "2.2"
 
 # Caching
 moka = { version = "0.12", features = ["future"] }
@@ -190,7 +191,7 @@ pub use errors::*;
 
 ### 2. stream-aggregator-store
 
-Storage implementations.
+Storage implementations using Diesel ORM.
 
 ```toml
 # crates/stream-aggregator-store/Cargo.toml
@@ -202,9 +203,10 @@ edition.workspace = true
 [features]
 default = ["memory"]
 memory = ["dashmap"]
-sqlite = ["sqlx/sqlite"]
-postgres = ["sqlx/postgres"]
-all = ["memory", "sqlite", "postgres"]
+diesel = ["dep:diesel", "dep:r2d2", "dep:diesel_migrations"]
+diesel-sqlite = ["diesel"]
+diesel-postgres = ["diesel"]
+all = ["memory", "diesel-sqlite", "diesel-postgres"]
 
 [dependencies]
 stream-aggregator-core = { path = "../stream-aggregator-core" }
@@ -218,16 +220,23 @@ tracing = { workspace = true }
 
 # Optional
 dashmap = { workspace = true, optional = true }
-sqlx = { workspace = true, optional = true }
 moka = { workspace = true }
+
+# Diesel ORM with SQLite and PostgreSQL support
+diesel = { workspace = true, optional = true }
+r2d2 = { version = "0.8", optional = true }
+diesel_migrations = { workspace = true, optional = true }
 ```
 
 **Contents:**
 
-- `MemoryStore` - In-memory implementation
-- `SqliteStore` - SQLite implementation
-- `PostgresStore` - PostgreSQL implementation
-- `CachedStore` - Caching wrapper
+- `MemoryStore` - In-memory implementation (DashMap-based)
+- `DieselStore` - Diesel ORM-based implementation
+  - Supports SQLite (via `diesel-sqlite` feature)
+  - Supports PostgreSQL (via `diesel-postgres` feature)
+  - Automatic migrations on startup
+  - Connection pooling (r2d2)
+  - Type-safe queries
 
 ---
 

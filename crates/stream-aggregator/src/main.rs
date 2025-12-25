@@ -51,7 +51,7 @@ struct Cli {
     #[arg(long, env = "TWITCH_CLIENT_SECRET")]
     twitch_client_secret: Option<String>,
 
-    /// Storage backend type (memory, sqlite)
+    /// Storage backend type (memory, diesel)
     #[arg(long, env = "STORE_BACKEND")]
     store_backend: Option<String>,
 
@@ -118,7 +118,7 @@ async fn main() -> Result<()> {
             cli.scrape_interval_secs,
             cli.twitch_client_id,
             cli.twitch_client_secret,
-            cli.store_backend.unwrap_or("memory".to_string()),
+            cli.store_backend.unwrap_or("diesel".to_string()),
             cli.database_url,
         )
     };
