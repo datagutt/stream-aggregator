@@ -1,0 +1,52 @@
+name: Merge Queue
+
+on:
+  merge_group:
+    types: [checks_requested]
+
+# Don't run duplicate jobs for merge queue
+concurrency:
+  group: merge-queue-${{ github.event.merge_group.head_sha }}
+  cancel-in-progress: true
+
+jobs:
+  # Quick validation before merge
+  validate:
+    name: Validate for merge
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: merge-queue-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-build-${{ runner.os }}-
+            cargo-deps-
+
+      - name: Format check
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Build
+        run: cargo build --all-features
+
+      - name: Test
+        run: cargo test --all-features

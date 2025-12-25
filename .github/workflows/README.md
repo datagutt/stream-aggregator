@@ -1,26 +1,50 @@
 # GitHub Actions Workflows
 
-## docker-publish.yml
+Optimized CI/CD workflows for maximum performance without additional costs.
 
-Automatically builds and publishes Docker images to GitHub Container Registry (GHCR).
+## Workflows Overview
 
-### Triggers
+### 1. CI (`ci.yml`)
+Fast validation with heavy caching and path filtering.
 
-- **Push to main**: Builds and tags as `latest`, `main`, and `main-{sha}`
-- **Push to develop**: Builds and tags as `develop`, `develop-{sha}`
-- **Version tags (v1.0.0)**: Builds and tags as `v1.0.0`, `v1.0`, `v1`, `latest`
-- **Pull requests**: Builds but doesn't push (validation only)
-- **Manual**: Can be triggered manually from Actions tab
+**Triggers:**
+- Push/PR to main/develop (only when Rust files change)
 
-### Features
+**Jobs:**
+- **check** (10 min): Format and clippy checks
+- **test** (30 min): Build and run tests
+- **audit** (10 min): Security audit (non-blocking)
 
+**Optimizations:**
+- Path filtering (skips doc-only changes)
+- Concurrency control (cancels old runs)
+- Heavy Cargo caching
+- Job parallelization
+
+### 2. Docker Build (`docker-publish.yml`)
+Multi-platform Docker builds with advanced caching.
+
+**Triggers:**
+- Push to main/develop (only when Rust files change)
+- Version tags (v1.0.0)
+- Pull requests (build only, no push)
+- Manual workflow dispatch
+
+**Key Features:**
 - Multi-platform builds (linux/amd64, linux/arm64)
-- Build caching for faster builds
-- Semantic versioning support
-- Provenance attestations for security
-- Automatic tagging strategy
+- Two-stage dependency compilation (massive cache wins)
+- Multi-layer caching (GHA + registry fallback)
+- Path filtering (only builds when needed)
+- Concurrency control (one build per branch)
+- Shallow git clone
 
-### Image Tags Generated
+**Build Time:**
+- First build: ~20 minutes (no cache)
+- Cached build (deps unchanged): ~3 minutes
+- Code-only change: ~5 minutes
+- Doc-only change: **Skipped entirely**
+
+**Image Tags Generated:**
 
 | Git Event | Tags Created |
 |-----------|--------------|
@@ -29,20 +53,66 @@ Automatically builds and publishes Docker images to GitHub Container Registry (G
 | Tag `v1.2.3` | `v1.2.3`, `v1.2`, `v1`, `latest` |
 | Pull request | No push (build only) |
 
-### Permissions
+### 3. Merge Queue (`merge-queue.yml`)
+Quick validation before merging to main.
 
-The workflow uses GITHUB_TOKEN which is automatically provided by GitHub.
-No additional secrets needed.
+**Triggers:** Merge queue validation
 
-### Build Time
+**Optimizations:**
+- Fast validation (format, lint, test)
+- Shared cache with CI workflow
+- Prevents broken code from reaching main
 
-- First build: ~15-20 minutes (no cache)
-- Subsequent builds: ~5-10 minutes (with cache)
-- Multi-platform adds ~2-3 minutes overhead
+### 4. Cleanup Caches (`cleanup-caches.yml`)
+Automatic cache management to prevent hitting GitHub's 10GB limit.
 
-### Output
+**Schedule:** Weekly on Sundays
 
-Images are published to:
+### 5. Dependabot (`dependabot.yml`)
+Automatic dependency updates with batching.
+
+**Schedule:**
+- Rust dependencies: Weekly (Monday)
+- GitHub Actions: Monthly
+- Docker base images: Weekly
+
+## Performance Optimizations
+
+### Path Filtering
+Only runs when these files change:
+- `crates/**/*.rs` - Rust source
+- `Cargo.toml`, `Cargo.lock` - Dependencies
+- `Dockerfile` - Build config
+- `.github/workflows/*.yml` - Workflows
+
+**Skipped:** `*.md`, `docs/`, etc.
+
+### Concurrency Control
+```yaml
+concurrency:
+  group: <workflow>-${{ github.ref }}
+  cancel-in-progress: true
+```
+Automatically cancels old runs when new commits arrive.
+
+### Docker Layer Caching Strategy
+1. **Planner stage**: Compiles dependencies only (heavily cached)
+2. **Builder stage**: Compiles application code (fast rebuilds)
+
+Cache sources (in priority order):
+1. Branch-specific cache (`buildkit-<branch>`)
+2. Main branch cache fallback
+3. Registry cache (cross-runner reuse)
+
+### Cargo Caching
+Separate caches for:
+1. Registry index (package metadata)
+2. Registry cache (downloaded crates)
+3. Git dependencies
+4. Build artifacts (`target/`)
+
+## Images Published To
+
 ```
 ghcr.io/OWNER/REPO:TAG
 ```
@@ -52,54 +122,142 @@ Example:
 ghcr.io/datagutt/stream-aggregator:latest
 ```
 
-### Local Testing
+## Local Testing
 
-To test the workflow locally:
-
+### Run CI checks locally
 ```bash
-# Install act (GitHub Actions local runner)
-brew install act  # macOS
-# or
-curl https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash
+cargo fmt --all -- --check
+cargo clippy --all-targets --all-features -- -D warnings
+cargo test --all-features
+```
 
-# Run workflow locally
+### Test Docker build with cache
+```bash
+docker buildx build \
+  --cache-from type=gha \
+  --cache-to type=gha,mode=max \
+  -t stream-aggregator .
+```
+
+### Test workflows with act
+```bash
+# Install act
+brew install act  # macOS
+
+# Run CI workflow
+act push -j check
+
+# Run Docker workflow (requires Docker)
 act push -j build-and-push
 ```
 
-### Troubleshooting
+## Cache Management
 
-#### Build fails with "no space left on device"
+### Monitor usage
+```bash
+# List all caches
+gh actions-cache list
 
-GitHub Actions runners have limited disk space. The workflow uses cache cleanup.
+# Check cache size
+gh actions-cache list --json | jq '[.[] | .size_in_bytes] | add'
+```
 
-#### Multi-platform build timeout
+### Manual cleanup
+```bash
+# Delete specific cache
+gh actions-cache delete <cache-key>
 
-Reduce platforms or increase timeout:
+# Delete all caches for a branch
+gh actions-cache list -B <branch> | cut -f 1 | \
+  xargs -I {} gh actions-cache delete {}
+```
+
+**Limits:**
+- GitHub free tier: 10GB total
+- Retention: 7 days (auto-cleanup)
+
+## Troubleshooting
+
+### Build fails with "no space left on device"
+Cache cleanup runs weekly. For immediate fix:
+```bash
+gh workflow run cleanup-caches.yml
+```
+
+### "cmake not installed" error
+Already fixed in Dockerfile. Ensure you're using latest image.
+
+### Multi-platform build timeout
+Increase timeout in workflow:
 ```yaml
 timeout-minutes: 60
 ```
 
-#### Authentication errors
+### Authentication errors
+Ensure workflow permissions:
+1. Repository Settings → Actions → General
+2. Workflow permissions → Read and write
+3. Save
 
-Ensure repository has package write permissions:
-1. Go to repository Settings
-2. Actions → General
-3. Workflow permissions
-4. Select "Read and write permissions"
+### Low cache hit rate
+Check if `Cargo.lock` is committed (it should be).
 
-### Maintenance
+## Cost Optimization
 
-The workflow uses versioned actions (e.g., `@v4`). Update periodically:
+### Free Tier Limits
+- **Public repos**: Unlimited minutes
+- **Private repos**: 2,000 minutes/month
 
+### Current Usage (per push)
+- CI (Rust changes): ~5-10 min
+- Docker build (cached): ~5 min
+- Docker build (uncached): ~20 min
+- Doc-only changes: **0 min** (skipped)
+
+### Strategies Used
+1. Path filtering → Skip unnecessary builds
+2. Concurrency control → Cancel duplicate runs
+3. Heavy caching → Minimize rebuild time
+4. Parallel jobs → Reduce wall-clock time
+5. Timeout limits → Prevent runaway jobs
+6. Shallow clones → Faster checkouts
+7. Batched dependency updates → Fewer CI runs
+
+## Monitoring
+
+### Check workflow performance
 ```bash
-# Check for updates
-gh workflow list
+# List recent runs
+gh run list --workflow=ci.yml
+
+# View run details
+gh run view <run-id>
+
+# Download logs
+gh run download <run-id>
 ```
 
-### Cost
+### Verify cache effectiveness
+Check logs for:
+```
+Cache restored from key: cargo-deps-<hash>
+```
+Good hit rate: >80%
 
-GitHub Actions is free for public repositories with generous limits:
-- 2000 minutes/month for free accounts
-- Unlimited for public repos
+## Maintenance
 
-Multi-platform builds use ~15-20 minutes per build.
+### Weekly
+- Review failed runs
+- Merge Dependabot PRs
+- Check cache usage
+
+### Monthly
+- Update GitHub Actions versions
+- Review workflow performance
+- Optimize slow jobs
+
+## References
+
+- [GitHub Actions Caching](https://docs.github.com/en/actions/using-workflows/caching-dependencies-to-speed-up-workflows)
+- [Docker Buildx Caching](https://docs.docker.com/build/cache/)
+- [Cargo Build Performance](https://doc.rust-lang.org/cargo/reference/profiles.html)

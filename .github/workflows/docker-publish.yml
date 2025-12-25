@@ -40,10 +40,14 @@ jobs:
       contents: read
       packages: write
       id-token: write
+    timeout-minutes: 60
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # Shallow clone for faster checkout
+          fetch-depth: 1
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -54,6 +58,8 @@ jobs:
           driver-opts: |
             image=moby/buildkit:latest
             network=host
+          # Enable buildkit features for better caching
+          buildkitd-flags: --allow-insecure-entitlement network.host --allow-insecure-entitlement security.insecure
 
       - name: Log into registry ${{ env.REGISTRY }}
         if: github.event_name != 'pull_request'
@@ -99,6 +105,9 @@ jobs:
             CARGO_INCREMENTAL=0
             CARGO_NET_RETRY=10
             RUSTFLAGS=-C target-cpu=generic
+          # Enable provenance for better build reproducibility
+          provenance: true
+          sbom: false
 
       - name: Generate artifact attestation
         if: github.event_name != 'pull_request'

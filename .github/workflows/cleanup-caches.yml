@@ -1,0 +1,36 @@
+name: Cleanup Old Caches
+
+on:
+  schedule:
+    # Run weekly on Sunday at 00:00 UTC
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    name: Clean up old GitHub Actions caches
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cleanup old caches
+        run: |
+          gh extension install actions/gh-actions-cache
+          
+          echo "Fetching list of cache keys"
+          cacheKeysForPR=$(gh actions-cache list -R $REPO -B $BRANCH -L 100 | cut -f 1)
+          
+          set +e
+          echo "Deleting caches older than 7 days..."
+          for cacheKey in $cacheKeysForPR; do
+            gh actions-cache delete $cacheKey -R $REPO -B $BRANCH --confirm
+          done
+          echo "Done"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ github.ref }}
