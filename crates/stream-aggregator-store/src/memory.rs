@@ -169,10 +169,11 @@ impl StreamStore for MemoryStore {
                 "name" => a.display_name.cmp(&b.display_name),
                 "platform" => a.platform.cmp(&b.platform),
                 "updated" => a.last_updated.cmp(&b.last_updated),
-                "viewers" | _ => b
+                "viewers" => b
                     .viewer_count
                     .unwrap_or(0)
                     .cmp(&a.viewer_count.unwrap_or(0)),
+                _ => a.display_name.cmp(&b.display_name), // Default to name
             };
 
             if is_ascending {
@@ -185,7 +186,7 @@ impl StreamStore for MemoryStore {
         // Pagination
         let page = query.page.unwrap_or(0);
         let page_size = query.page_size.unwrap_or(50).min(100); // Max 100 items per page
-        let total_pages = (total + page_size - 1) / page_size;
+        let total_pages = total.div_ceil(page_size);
 
         let start = page * page_size;
         let end = (start + page_size).min(total);

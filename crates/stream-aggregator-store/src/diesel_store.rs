@@ -70,6 +70,7 @@ impl DieselStore {
     }
 
     /// Get a connection from the pool (sync operation for blocking contexts)
+    #[allow(dead_code)]
     fn get_conn(
         &self,
     ) -> Result<r2d2::PooledConnection<ConnectionManager<SqliteConnection>>, StoreError> {
@@ -249,7 +250,7 @@ impl StreamStore for DieselStore {
                 items.push(stream);
             }
 
-            let total_pages = (total + page_size - 1) / page_size;
+            let total_pages = total.div_ceil(page_size);
 
             Ok(StreamPage {
                 items,
