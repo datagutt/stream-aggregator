@@ -161,15 +161,9 @@ client_secret = ""
 
 [providers.youtube]
 enabled = true
-# Optional: YouTube Data API v3 key for discovery
-api_key = ""
-# Use HTML scraping instead of API
-scraping_mode = "html"
 
 [providers.kick]
 enabled = true
-# Request delay (seconds) - Kick is sensitive to rapid requests
-request_delay_secs = 2
 
 [providers.tiktok]
 enabled = true

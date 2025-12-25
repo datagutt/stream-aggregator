@@ -33,8 +33,6 @@ enabled = true
 
 [providers.kick]
 enabled = true
-# Request delay (seconds) - Kick is sensitive to rapid requests
-# request_delay_secs = 2
 
 [providers.dlive]
 enabled = true
