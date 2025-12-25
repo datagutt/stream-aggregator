@@ -1,10 +1,11 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use chrono::Utc;
 use clap::Parser;
 use serde::{Deserialize, Serialize};
 use sqlx::sqlite::SqlitePool;
 use std::collections::{HashMap, HashSet};
 use std::fs;
+use wreq::Client;
 
 #[derive(Parser)]
 #[command(name = "stream-aggregator-migrator")]
@@ -51,6 +52,51 @@ struct MigrationStats {
     teams: HashMap<String, usize>,
     featured_count: usize,
     with_custom_name: usize,
+}
+
+/// Response from IVR API for user lookup
+#[derive(Debug, Deserialize)]
+struct IvrUser {
+    id: String,
+    login: String,
+}
+
+/// Batch resolve Twitch usernames to numeric user IDs using the IVR API.
+/// Returns a map of login (lowercase) -> numeric ID.
+/// Users that don't exist are simply not included in the response.
+async fn resolve_twitch_usernames_batch_via_ivr(
+    client: &Client,
+    usernames: &[&str],
+) -> Result<HashMap<String, String>> {
+    if usernames.is_empty() {
+        return Ok(HashMap::new());
+    }
+
+    let logins = usernames.join(",");
+    let url = format!("https://api.ivr.fi/v2/twitch/user?login={}", logins);
+
+    let response = client
+        .get(&url)
+        .send()
+        .await
+        .map_err(|e| anyhow!("IVR API request failed: {}", e))?;
+
+    if !response.status().is_success() {
+        return Err(anyhow!("IVR API returned status {}", response.status()));
+    }
+
+    let users: Vec<IvrUser> = response
+        .json()
+        .await
+        .map_err(|e| anyhow!("Failed to parse IVR response: {}", e))?;
+
+    // Build map using login (lowercase) as key since IVR returns lowercase logins
+    let map: HashMap<String, String> = users
+        .into_iter()
+        .map(|u| (u.login.to_lowercase(), u.id))
+        .collect();
+
+    Ok(map)
 }
 
 impl MigrationStats {
@@ -155,6 +201,79 @@ async fn main() -> Result<()> {
         unique_streamers.len()
     );
 
+    // Create HTTP client for IVR API lookups
+    let http_client = Client::new();
+
+    // Collect Twitch usernames that need resolution (non-numeric user_ids)
+    let twitch_usernames_to_resolve: Vec<&str> = unique_streamers
+        .iter()
+        .filter(|s| {
+            s.platform.to_lowercase() == "twitch"
+                && !s.user_id.chars().all(|c| c.is_ascii_digit())
+        })
+        .map(|s| s.user_id.as_str())
+        .collect();
+
+    // Batch resolve Twitch usernames to numeric IDs
+    let resolved_ids: HashMap<String, String> = if !twitch_usernames_to_resolve.is_empty() {
+        println!(
+            "\nResolving {} Twitch username(s) to numeric IDs via IVR API...",
+            twitch_usernames_to_resolve.len()
+        );
+
+        // IVR API can handle many users at once, but let's batch in chunks of 100 to be safe
+        let mut all_resolved: HashMap<String, String> = HashMap::new();
+        for chunk in twitch_usernames_to_resolve.chunks(100) {
+            match resolve_twitch_usernames_batch_via_ivr(&http_client, chunk).await {
+                Ok(batch_result) => {
+                    println!("  Resolved {} user(s) in batch", batch_result.len());
+                    all_resolved.extend(batch_result);
+                }
+                Err(e) => {
+                    println!("  Warning: Batch resolution failed: {}", e);
+                }
+            }
+        }
+        all_resolved
+    } else {
+        println!("\nNo Twitch usernames to resolve (all are already numeric IDs)");
+        HashMap::new()
+    };
+
+    // Apply resolved IDs and track failures
+    let mut resolved_streamers: Vec<OldStreamer> = Vec::new();
+    let mut resolution_failures: Vec<String> = Vec::new();
+
+    for mut streamer in unique_streamers {
+        if streamer.platform.to_lowercase() == "twitch" {
+            if !streamer.user_id.chars().all(|c| c.is_ascii_digit()) {
+                let username_lower = streamer.user_id.to_lowercase();
+                if let Some(numeric_id) = resolved_ids.get(&username_lower) {
+                    println!("  {} -> {}", streamer.user_id, numeric_id);
+                    streamer.user_id = numeric_id.clone();
+                } else {
+                    println!("  {} -> NOT FOUND", streamer.user_id);
+                    resolution_failures.push(streamer.user_id.clone());
+                    continue;
+                }
+            }
+        }
+        resolved_streamers.push(streamer);
+    }
+
+    if !resolution_failures.is_empty() {
+        println!(
+            "\nWarning: {} Twitch username(s) could not be resolved (user may not exist):",
+            resolution_failures.len()
+        );
+        for name in &resolution_failures {
+            println!("  - {}", name);
+        }
+    }
+
+    let unique_streamers = resolved_streamers;
+    stats.unique_streamers = unique_streamers.len();
+
     if args.dry_run {
         stats.migrated = unique_streamers.len();
         stats.print();
@@ -163,7 +282,7 @@ async fn main() -> Result<()> {
         return Ok(());
     }
 
-    println!("Connecting to database: {}", args.database_url);
+    println!("\nConnecting to database: {}", args.database_url);
     let pool = SqlitePool::connect(&args.database_url).await?;
 
     // Run migrations to ensure schema exists

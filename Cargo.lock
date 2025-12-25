@@ -2480,6 +2480,7 @@ dependencies = [
  "stream-aggregator-core",
  "stream-aggregator-store",
  "tokio",
+ "wreq",
 ]
 
 [[package]]
