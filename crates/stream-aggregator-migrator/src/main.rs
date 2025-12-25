@@ -7,6 +7,8 @@ use std::collections::{HashMap, HashSet};
 use std::fs;
 use wreq::Client;
 
+const TWITCH_USER_BATCH_LIMIT: usize = 50;
+
 #[derive(Parser)]
 #[command(name = "stream-aggregator-migrator")]
 #[command(about = "Migrate old people.json database to new SQLite schema")]
@@ -168,7 +170,10 @@ async fn main() -> Result<()> {
         );
 
         // Track platform stats (before dedup)
-        *stats.platforms.entry(streamer.platform.clone()).or_insert(0) += 1;
+        *stats
+            .platforms
+            .entry(streamer.platform.clone())
+            .or_insert(0) += 1;
 
         if seen.contains(&key) {
             stats.duplicates_in_source += 1;
@@ -208,8 +213,7 @@ async fn main() -> Result<()> {
     let twitch_usernames_to_resolve: Vec<&str> = unique_streamers
         .iter()
         .filter(|s| {
-            s.platform.to_lowercase() == "twitch"
-                && !s.user_id.chars().all(|c| c.is_ascii_digit())
+            s.platform.to_lowercase() == "twitch" && !s.user_id.chars().all(|c| c.is_ascii_digit())
         })
         .map(|s| s.user_id.as_str())
         .collect();
@@ -221,9 +225,9 @@ async fn main() -> Result<()> {
             twitch_usernames_to_resolve.len()
         );
 
-        // IVR API can handle many users at once, but let's batch in chunks of 100 to be safe
+        // IVR API can handle many users at once, but let's batch in chunks of TWITCH_USER_BATCH_LIMIT to be safe
         let mut all_resolved: HashMap<String, String> = HashMap::new();
-        for chunk in twitch_usernames_to_resolve.chunks(100) {
+        for chunk in twitch_usernames_to_resolve.chunks(TWITCH_USER_BATCH_LIMIT) {
             match resolve_twitch_usernames_batch_via_ivr(&http_client, chunk).await {
                 Ok(batch_result) => {
                     println!("  Resolved {} user(s) in batch", batch_result.len());
