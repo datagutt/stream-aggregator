@@ -16,7 +16,7 @@ use stream_aggregator_scheduler::{Scheduler, SchedulerConfig};
 #[command(about = "Multi-platform live stream aggregator", version, author)]
 struct Cli {
     /// Configuration file path (TOML format)
-    #[arg(short, long)]
+    #[arg(short, long, default_value = "config.toml")]
     config: Option<String>,
 
     /// Server host to bind to
@@ -75,7 +75,10 @@ async fn main() -> Result<()> {
         .with(tracing_subscriber::EnvFilter::new(&cli.log_level))
         .init();
 
-    info!("🚀 StreamAggregator v{} starting...", env!("CARGO_PKG_VERSION"));
+    info!(
+        "🚀 StreamAggregator v{} starting...",
+        env!("CARGO_PKG_VERSION")
+    );
 
     // Load configuration
     let config = if let Some(config_path) = &cli.config {
@@ -86,7 +89,8 @@ async fn main() -> Result<()> {
         // Override with CLI args (CLI takes precedence)
         config.server.host = cli.host;
         config.server.port = cli.port;
-        config.auth.api_keys = cli.api_keys
+        config.auth.api_keys = cli
+            .api_keys
             .map(|keys| keys.split(',').map(|s| s.trim().to_string()).collect())
             .unwrap_or(config.auth.api_keys);
         config.auth.require_all = cli.require_auth_all;
@@ -129,26 +133,25 @@ async fn main() -> Result<()> {
     // Start scheduler in background
     let scheduler_store = store.clone();
     let providers: Vec<_> = registry.list().iter().cloned().collect();
-    
+
     let scheduler_config = SchedulerConfig {
         scrape_interval_secs: config.scheduler.interval_secs,
         max_concurrent: config.scheduler.max_concurrent,
     };
-    
-    let scheduler = Scheduler::new(
-        scheduler_store,
-        providers,
-        scheduler_config,
-    );
-    
+
+    let scheduler = Scheduler::new(scheduler_store, providers, scheduler_config);
+
     tokio::spawn(async move {
         scheduler.run().await;
     });
 
     // Configure authentication
     let auth_config = if !config.auth.api_keys.is_empty() {
-        info!("🔒 API authentication enabled with {} key(s)", config.auth.api_keys.len());
-        
+        info!(
+            "🔒 API authentication enabled with {} key(s)",
+            config.auth.api_keys.len()
+        );
+
         let mut auth = AuthConfig::new(config.auth.api_keys);
         if config.auth.require_all {
             info!("🔒 Requiring authentication for all requests");
@@ -173,15 +176,24 @@ async fn main() -> Result<()> {
     info!("Available endpoints:");
     info!("  • GET  http://{}/health - Health check", addr);
     info!("  • GET  http://{}/api/v1/streams - List all streams", addr);
-    info!("  • GET  http://{}/api/v1/streams/:id - Get stream by ID", addr);
-    info!("  • GET  http://{}/api/v1/streamers - List tracked streamers", addr);
-    info!("  • POST http://{}/api/v1/streamers - Add streamer to track", addr);
+    info!(
+        "  • GET  http://{}/api/v1/streams/:id - Get stream by ID",
+        addr
+    );
+    info!(
+        "  • GET  http://{}/api/v1/streamers - List tracked streamers",
+        addr
+    );
+    info!(
+        "  • POST http://{}/api/v1/streamers - Add streamer to track",
+        addr
+    );
     info!("  • GET  http://{}/api/v1/platforms - List platforms", addr);
     info!("");
     info!("📖 Press Ctrl+C to shutdown");
 
     let listener = tokio::net::TcpListener::bind(&addr).await?;
-    
+
     axum::serve(listener, router)
         .await
         .map_err(|e| anyhow::anyhow!("Server error: {}", e))?;
