@@ -1,8 +1,6 @@
 use anyhow::{anyhow, Result};
 use chrono::Utc;
 use clap::Parser;
-use diesel::prelude::*;
-use diesel::sqlite::SqliteConnection;
 use serde::Deserialize;
 use std::collections::{HashMap, HashSet};
 use std::fs;
