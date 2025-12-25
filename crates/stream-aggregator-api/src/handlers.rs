@@ -189,11 +189,10 @@ pub async fn add_streamer(
         )))
     })?;
 
-    let final_user_id = if let Some(username) = req.username {
-        provider.resolve_user_id(&username).await?
-    } else {
-        req.user_id.unwrap()
-    };
+    // Always resolve through the provider to ensure we get the canonical user ID
+    // This handles both usernames and already-resolved IDs correctly
+    let input = req.username.or(req.user_id).unwrap();
+    let final_user_id = provider.resolve_user_id(&input).await?;
 
     let mut streamer = TrackedStreamer::new_manual(req.platform.clone(), final_user_id.clone());
     streamer.custom_name = req.custom_name;
