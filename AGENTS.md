@@ -51,7 +51,7 @@ Key files to reference for API behavior and scraping logic:
 
 ### HTTP Client: wreq
 
-Use **wreq** (not reqwest) as the HTTP client for ALL platforms:
+ALWAYS use **wreq** (not reqwest) as the HTTP client for ALL HTTP(s) calls:
 
 - Fork of reqwest, 100% API compatible
 - JA3/JA4/HTTP2 TLS fingerprint emulation
