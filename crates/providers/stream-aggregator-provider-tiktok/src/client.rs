@@ -109,7 +109,7 @@ impl TikTokProvider {
         self.config
             .bridge_url
             .split(':')
-            .last()
+            .next_back()
             .and_then(|s| s.parse().ok())
             .unwrap_or(3456)
     }
@@ -180,15 +180,12 @@ impl TikTokProvider {
                 }
             }
 
-            match self.client.get(&health_url).send().await {
-                Ok(response) => {
-                    if let Ok(health) = response.json::<HealthResponse>().await {
-                        if health.status == "ok" {
-                            return Ok(());
-                        }
+            if let Ok(response) = self.client.get(&health_url).send().await {
+                if let Ok(health) = response.json::<HealthResponse>().await {
+                    if health.status == "ok" {
+                        return Ok(());
                     }
                 }
-                Err(_) => {}
             }
 
             tokio::time::sleep(Duration::from_millis(BRIDGE_HEALTH_CHECK_INTERVAL_MS)).await;
