@@ -340,7 +340,7 @@ impl StreamStore for MemoryStore {
             .map(|entry| entry.value().clone())
             .filter(|rule| {
                 if let Some(platform) = platform {
-                    &rule.platform == platform
+                    rule.platform == platform
                 } else {
                     true
                 }
