@@ -1,7 +1,6 @@
 //! HTTP request handlers
 
 use axum::{
-    async_trait,
     extract::{FromRequestParts, Path, State},
     http::{request::Parts, StatusCode},
     Json,
@@ -29,7 +28,6 @@ type ApiResult<T> = Result<T, ApiErrorResponse>;
 /// bracket notation like `?labels[key]=value` into nested structures.
 pub struct QsQuery<T>(pub T);
 
-#[async_trait]
 impl<T, S> FromRequestParts<S> for QsQuery<T>
 where
     T: DeserializeOwned,

@@ -41,14 +41,14 @@ wreq = { version = "6.0.0-rc.25", features = ["json"] }
 wreq-util = "3.0.0-rc.7" # Browser emulation presets (Chrome, Safari, Firefox, etc.)
 
 # Web framework
-axum = { version = "0.7", features = ["ws", "macros"] }
-tower = { version = "0.4" }
-tower-http = { version = "0.5", features = ["cors", "trace", "compression-gzip"] }
+axum = { version = "0.8", features = ["ws", "macros"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors", "trace", "compression-gzip"] }
 
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-toml = "0.8"
+toml = "0.9"
 
 # Protocol Buffers (for TikTok WebSocket messages)
 prost = "0.12"
@@ -60,13 +60,13 @@ diesel_migrations = "2.2"
 
 # Caching
 moka = { version = "0.12", features = ["future"] }
-dashmap = "5.5"
+dashmap = "6.1"
 
 # Configuration
 config = { version = "0.14", features = ["toml"] }
 
 # Error handling
-thiserror = "1.0"
+thiserror = "2.0"
 anyhow = "1.0"
 
 # Logging & tracing

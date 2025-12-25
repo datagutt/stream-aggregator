@@ -40,11 +40,11 @@ pub fn create_router_with_auth(
         .route("/api/v1/health", get(health_check))
         // Streams endpoints (public reads by default)
         .route("/api/v1/streams", get(list_streams))
-        .route("/api/v1/streams/:id", get(get_stream))
+        .route("/api/v1/streams/{id}", get(get_stream))
         // Streamers endpoints (writes require auth)
         .route("/api/v1/streamers", get(list_streamers).post(add_streamer))
         .route(
-            "/api/v1/streamers/:platform/:user_id",
+            "/api/v1/streamers/{platform}/{user_id}",
             delete(remove_streamer),
         )
         // Platforms endpoint (public by default)

@@ -14,7 +14,7 @@ tower = { workspace = true }
 tower-http = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-serde_qs = "0.13"
+serde_qs = "0.15"
 chrono = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
