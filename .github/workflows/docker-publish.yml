@@ -110,7 +110,8 @@ jobs:
           sbom: false
 
       - name: Generate artifact attestation
-        if: github.event_name != 'pull_request'
+        #if: github.event_name != 'pull_request'
+        if: false
         uses: actions/attest-build-provenance@v1
         with:
           subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME}}
