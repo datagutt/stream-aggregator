@@ -1,13 +1,18 @@
 # StreamAggregator Dockerfile
 #
 # Multi-stage build for minimal image size
+# Includes: stream-aggregator server + stream-aggregator-migrator + TikTok bridge
 # Supports: Docker, Kubernetes, Fly.io, Railway, Coolify, etc.
 #
 # Build:
 #   docker build -t stream-aggregator .
 #
-# Run with SQLite:
+# Run server:
 #   docker run -p 8080:8080 -v ./data:/data -e DATABASE_URL=/data/streams.db stream-aggregator
+#
+# Run migrator:
+#   docker run -v ./data:/data -v ./people.json:/data/people.json stream-aggregator \
+#     stream-aggregator-migrator -i /data/people.json -d /data/streams.db
 
 # ============================================================================
 # Stage 1: Build
@@ -30,11 +35,12 @@ RUN apt-get update && apt-get install -y \
 COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates
 
-# Build release binary with SQLite support
+# Build release binaries with SQLite support
 # Use sccache-like environment to leverage Docker layer caching
 ENV CARGO_INCREMENTAL=0
 ENV CARGO_NET_RETRY=10
 RUN cargo build --release --package stream-aggregator --features diesel-store
+RUN cargo build --release --package stream-aggregator-migrator
 
 # ============================================================================
 # Stage 2: Node.js Bridge Builder
@@ -69,8 +75,9 @@ RUN apt-get update && apt-get install -y \
 RUN useradd -m -u 1000 appuser
 RUN mkdir -p /data && chown appuser:appuser /data
 
-# Copy binary from builder
+# Copy binaries from builder
 COPY --from=builder /app/target/release/stream-aggregator /usr/local/bin/
+COPY --from=builder /app/target/release/stream-aggregator-migrator /usr/local/bin/
 
 # Copy TikTok bridge from node-builder
 COPY --from=node-builder --chown=appuser:appuser /bridge /app/nodejs-bridge
