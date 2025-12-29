@@ -96,6 +96,14 @@ enabled = true
 # No credentials required
 # Simple REST API
 
+[providers.tiktok]
+enabled = true
+# Requires Node.js bridge (included in Docker image)
+# In Docker, bridge is automatically located at /app/nodejs-bridge
+# No manual configuration needed unless using custom paths
+# Optional: bridge_url = "http://127.0.0.1:3456"
+# Optional: bridge_path = "/app/nodejs-bridge"
+
 # ============================================================================
 # Notes for Production Deployment
 # ============================================================================

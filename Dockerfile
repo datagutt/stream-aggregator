@@ -37,17 +37,32 @@ ENV CARGO_NET_RETRY=10
 RUN cargo build --release --package stream-aggregator --features diesel-store
 
 # ============================================================================
-# Stage 2: Runtime
+# Stage 2: Node.js Bridge Builder
+# ============================================================================
+FROM node:24-slim AS node-builder
+
+WORKDIR /bridge
+
+# Copy TikTok bridge files
+COPY crates/providers/stream-aggregator-provider-tiktok/nodejs-bridge/package*.json ./
+COPY crates/providers/stream-aggregator-provider-tiktok/nodejs-bridge/index.js ./
+
+# Install dependencies (production only)
+RUN npm ci --omit=dev
+
+# ============================================================================
+# Stage 3: Runtime
 # ============================================================================
 FROM debian:trixie-slim AS runtime
 
 WORKDIR /app
 
-# Install runtime dependencies
+# Install runtime dependencies including Node.js
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     libssl3t64 \
     curl \
+    nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user for security
@@ -56,6 +71,9 @@ RUN mkdir -p /data && chown appuser:appuser /data
 
 # Copy binary from builder
 COPY --from=builder /app/target/release/stream-aggregator /usr/local/bin/
+
+# Copy TikTok bridge from node-builder
+COPY --from=node-builder --chown=appuser:appuser /bridge /app/nodejs-bridge
 
 # Switch to non-root user
 USER appuser

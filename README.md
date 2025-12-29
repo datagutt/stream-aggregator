@@ -88,7 +88,7 @@ curl http://localhost:8080/health
 | Kick | No | Browser emulation (Cloudflare bypass) |
 | DLive | No | GraphQL API |
 | Trovo | Optional | REST API |
-| TikTok | No | WebSocket bridge (requires Node.js) |
+| TikTok | No | Node.js bridge (included in Docker, auto-detected) |
 | Guac | No | REST API |
 | AngelThump | No | REST API |
 | RobotStreamer | No | REST API |
@@ -129,9 +129,16 @@ client_secret = "your_secret"
 
 [providers.youtube]
 enabled = true
+
+[providers.tiktok]
+enabled = true
+# Bridge auto-detected in Docker (/app/nodejs-bridge)
+# For local development, ensure nodejs-bridge directory exists
 ```
 
 See `config.example.toml` for all options.
+
+**Note on TikTok**: The TikTok provider uses a Node.js bridge that is automatically included in the Docker image. For local development from source, the bridge is auto-detected in the `crates/providers/stream-aggregator-provider-tiktok/nodejs-bridge` directory. If you get a warning about TikTok bridge not found, either disable it with `enabled = false` or ensure Node.js 24+ LTS is installed.
 
 ## Deployment
 

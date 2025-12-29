@@ -135,7 +135,7 @@ The bridge returns structured error codes:
 
 ## Requirements
 
-- Node.js 18+ must be installed and available in PATH
+- Node.js 24+ LTS must be installed and available in PATH
 - The `nodejs-bridge` directory must be accessible (auto-detected or configured via `bridge_path`)
 
 ## Development
