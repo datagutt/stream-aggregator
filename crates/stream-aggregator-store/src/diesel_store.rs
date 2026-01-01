@@ -2,7 +2,7 @@
 
 use async_trait::async_trait;
 use diesel::prelude::*;
-use diesel::r2d2::{ConnectionManager, Pool};
+use diesel::r2d2::{ConnectionManager, CustomizeConnection, Pool};
 use diesel::sqlite::SqliteConnection;
 use std::sync::Arc;
 use tracing::{debug, trace};
@@ -13,6 +13,38 @@ use crate::models::*;
 use crate::schema::{discovery_rules, streams, tracked_streamers};
 
 type DbPool = Pool<ConnectionManager<SqliteConnection>>;
+
+/// SQLite connection customizer to enable WAL mode and set busy timeout
+#[derive(Debug, Clone, Copy)]
+struct SqliteConnectionCustomizer;
+
+impl CustomizeConnection<SqliteConnection, diesel::r2d2::Error> for SqliteConnectionCustomizer {
+    fn on_acquire(&self, conn: &mut SqliteConnection) -> Result<(), diesel::r2d2::Error> {
+        use diesel::sql_query;
+
+        // Enable WAL mode for better concurrency
+        sql_query("PRAGMA journal_mode = WAL")
+            .execute(conn)
+            .map_err(diesel::r2d2::Error::QueryError)?;
+
+        // Set busy timeout to 30 seconds to handle concurrent writes
+        sql_query("PRAGMA busy_timeout = 30000")
+            .execute(conn)
+            .map_err(diesel::r2d2::Error::QueryError)?;
+
+        // Enable foreign keys
+        sql_query("PRAGMA foreign_keys = ON")
+            .execute(conn)
+            .map_err(diesel::r2d2::Error::QueryError)?;
+
+        // Optimize for concurrent writes
+        sql_query("PRAGMA synchronous = NORMAL")
+            .execute(conn)
+            .map_err(diesel::r2d2::Error::QueryError)?;
+
+        Ok(())
+    }
+}
 
 /// Diesel-based SQLite storage implementation
 ///
@@ -32,6 +64,9 @@ impl DieselStore {
 
         let manager = ConnectionManager::<SqliteConnection>::new(database_url);
         let pool = Pool::builder()
+            .max_size(20) // Increase pool size for concurrent writes
+            .connection_timeout(std::time::Duration::from_secs(30))
+            .connection_customizer(Box::new(SqliteConnectionCustomizer))
             .build(manager)
             .map_err(|e| StoreError::ConnectionError(e.to_string()))?;
 
