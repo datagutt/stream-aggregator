@@ -30,15 +30,15 @@ repository = "https://github.com/datagutt/stream-aggregator"
 
 [workspace.dependencies]
 # Async runtime
-tokio = { version = "1.35", features = ["full"] }
+tokio = { version = "1.48", features = ["full"] }
 
 # HTTP Client
 # wreq is a fork of reqwest with JA3/JA4/HTTP2 fingerprint emulation
 # API-compatible with reqwest, so we use it as the default for ALL platforms
 # This gives us anti-bot bypass capabilities (required for Kick) everywhere
 # https://github.com/0x676e67/wreq
-wreq = { version = "6.0.0-rc.25", features = ["json"] }
-wreq-util = "3.0.0-rc.7" # Browser emulation presets (Chrome, Safari, Firefox, etc.)
+wreq = { version = "6.0.0-rc.26", features = ["json"] }
+wreq-util = "3.0.0-rc.9" # Browser emulation presets (Chrome, Safari, Firefox, etc.)
 
 # Web framework
 axum = { version = "0.8", features = ["ws", "macros"] }
