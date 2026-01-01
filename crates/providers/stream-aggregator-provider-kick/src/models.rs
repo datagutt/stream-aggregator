@@ -70,3 +70,46 @@ pub struct KickCategory {
     pub name: String,
     pub slug: String,
 }
+
+/// Response from /api/v1/livestreams discovery endpoint
+#[derive(Debug, Deserialize)]
+pub struct KickLivestreamsResponse {
+    pub data: KickLivestreamsData,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct KickLivestreamsData {
+    pub livestreams: Vec<KickDiscoveredStream>,
+    #[serde(default)]
+    pub pagination: Option<KickPagination>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct KickPagination {
+    pub next_cursor: Option<String>,
+}
+
+/// A discovered livestream from the discovery API
+#[derive(Debug, Deserialize)]
+pub struct KickDiscoveredStream {
+    pub id: String,
+    pub channel: KickDiscoveryChannel,
+    pub category: KickCategory,
+    pub title: String,
+    pub viewer_count: u64,
+    pub language: String,
+    pub start_time: String,
+    #[serde(default)]
+    pub tags: Vec<String>,
+    #[serde(default)]
+    pub is_mature: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct KickDiscoveryChannel {
+    pub id: u64,
+    pub slug: String,
+    pub username: String,
+    #[serde(default)]
+    pub profile_pic: Option<String>,
+}
