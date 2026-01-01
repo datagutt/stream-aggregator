@@ -175,7 +175,9 @@ async fn scrape_platform(
 
     let mut success_count = 0;
     let mut failed_count = 0;
+    let mut streams_to_store = Vec::new();
 
+    // First, collect all successful stream fetches and enrich them
     for result in results {
         match result {
             Ok(mut stream_info) => {
@@ -212,30 +214,46 @@ async fn scrape_platform(
                     }
                 }
 
-                // Store the enriched stream information
-                match store.upsert_stream(&stream_info).await {
-                    Ok(_) => {
-                        debug!(
-                            "{}: {} is {}",
-                            platform_id,
-                            stream_info.display_name,
-                            if stream_info.is_live {
-                                "LIVE"
-                            } else {
-                                "offline"
-                            }
-                        );
-                        success_count += 1;
-                    }
-                    Err(e) => {
-                        error!("Failed to store stream info: {}", e);
-                        failed_count += 1;
-                    }
-                }
+                debug!(
+                    "{}: {} is {}",
+                    platform_id,
+                    stream_info.display_name,
+                    if stream_info.is_live { "LIVE" } else { "offline" }
+                );
+
+                streams_to_store.push(stream_info);
             }
             Err(e) => {
                 warn!("Failed to fetch stream from {}: {}", platform_id, e);
                 failed_count += 1;
+            }
+        }
+    }
+
+    // Store streams in smaller batches to reduce concurrent write pressure
+    const BATCH_SIZE: usize = 5;
+    for chunk in streams_to_store.chunks(BATCH_SIZE) {
+        // Process each mini-batch concurrently but limit the batch size
+        let mut tasks = Vec::new();
+        for stream in chunk {
+            let store = store.clone();
+            let stream = stream.clone();
+            let task = tokio::spawn(async move { store.upsert_stream(&stream).await });
+            tasks.push(task);
+        }
+
+        // Wait for this batch to complete before moving to the next
+        for task in tasks {
+            match task.await {
+                Ok(Ok(_)) => success_count += 1,
+                Ok(Err(e)) => {
+                    error!("Failed to store stream info: {}", e);
+                    failed_count += 1;
+                }
+                Err(e) => {
+                    error!("Task join error: {}", e);
+                    failed_count += 1;
+                }
             }
         }
     }
