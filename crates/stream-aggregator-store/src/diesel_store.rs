@@ -145,6 +145,51 @@ impl StreamStore for DieselStore {
         Ok(())
     }
 
+    async fn batch_upsert_streams(&self, streams: &[StreamInfo]) -> Result<(), StoreError> {
+        if streams.is_empty() {
+            return Ok(());
+        }
+
+        let stream_count = streams.len();
+        debug!("Batch upserting {} streams", stream_count);
+
+        let streams = streams.to_vec();
+        let pool = Arc::clone(&self.pool);
+
+        tokio::task::spawn_blocking(move || {
+            let mut conn = pool
+                .get()
+                .map_err(|e| StoreError::ConnectionError(e.to_string()))?;
+
+            // Use a transaction for atomicity and performance
+            conn.transaction::<_, diesel::result::Error, _>(|conn| {
+                // SQLite has a limit of 999 parameters per query
+                // Each stream has ~15 fields, so we chunk to stay well under the limit
+                const CHUNK_SIZE: usize = 50;
+
+                for chunk in streams.chunks(CHUNK_SIZE) {
+                    let new_streams: Vec<NewStream> = chunk
+                        .iter()
+                        .map(|s| NewStream::from_stream_info(s))
+                        .collect::<Result<Vec<_>, _>>()
+                        .map_err(|e| diesel::result::Error::DeserializationError(Box::new(e)))?;
+
+                    diesel::replace_into(streams::table)
+                        .values(&new_streams)
+                        .execute(conn)?;
+                }
+
+                Ok(())
+            })
+            .map_err(|e| StoreError::QueryError(e.to_string()))
+        })
+        .await
+        .map_err(|e| StoreError::QueryError(format!("Task join error: {}", e)))??;
+
+        debug!("Successfully batch upserted {} streams", stream_count);
+        Ok(())
+    }
+
     async fn get_stream(&self, id: &StreamId) -> Result<Option<StreamInfo>, StoreError> {
         trace!(stream_id = %id, "Getting stream");
 

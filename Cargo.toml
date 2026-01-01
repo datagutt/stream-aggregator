@@ -37,7 +37,7 @@ tokio = { version = "1.48", features = ["full"] }
 # API-compatible with reqwest, so we use it as the default for ALL platforms
 # This gives us anti-bot bypass capabilities (required for Kick) everywhere
 # https://github.com/0x676e67/wreq
-wreq = { version = "6.0.0-rc.26", features = ["json"] }
+wreq = { version = "6.0.0-rc.26", features = ["json", "form", "query"] }
 wreq-util = "3.0.0-rc.9" # Browser emulation presets (Chrome, Safari, Firefox, etc.)
 
 # Web framework

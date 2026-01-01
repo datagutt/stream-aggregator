@@ -90,6 +90,26 @@ pub trait StreamStore: Send + Sync + 'static {
     /// * `stream` - Stream information to store
     async fn upsert_stream(&self, stream: &StreamInfo) -> Result<(), StoreError>;
 
+    /// Batch insert or update multiple streams in a single transaction
+    ///
+    /// This is much more efficient than calling upsert_stream repeatedly,
+    /// especially for SQLite which benefits from batching writes.
+    ///
+    /// # Arguments
+    /// * `streams` - Slice of stream information to store
+    ///
+    /// # Returns
+    /// * `Ok(())` - If all streams were stored successfully
+    /// * `Err(StoreError)` - If any error occurred (transaction will be rolled back)
+    async fn batch_upsert_streams(&self, streams: &[StreamInfo]) -> Result<(), StoreError> {
+        // Default implementation: call upsert_stream for each stream
+        // Concrete implementations can override with optimized batch operations
+        for stream in streams {
+            self.upsert_stream(stream).await?;
+        }
+        Ok(())
+    }
+
     /// Get stream information by ID
     ///
     /// # Arguments

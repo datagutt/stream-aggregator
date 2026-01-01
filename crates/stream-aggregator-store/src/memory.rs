@@ -49,6 +49,14 @@ impl StreamStore for MemoryStore {
         Ok(())
     }
 
+    async fn batch_upsert_streams(&self, streams: &[StreamInfo]) -> Result<(), StoreError> {
+        debug!("Batch upserting {} streams", streams.len());
+        for stream in streams {
+            self.streams.insert(stream.id.0.clone(), stream.clone());
+        }
+        Ok(())
+    }
+
     async fn get_stream(&self, id: &StreamId) -> Result<Option<StreamInfo>, StoreError> {
         trace!(stream_id = %id, "Getting stream");
         Ok(self.streams.get(&id.0).map(|entry| entry.clone()))

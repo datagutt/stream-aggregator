@@ -173,11 +173,10 @@ async fn scrape_platform(
     // Use batch fetching if available
     let results = provider.fetch_streams_batch(&user_ids).await;
 
-    let mut success_count = 0;
     let mut failed_count = 0;
     let mut streams_to_store = Vec::new();
 
-    // First, collect all successful stream fetches and enrich them
+    // Collect all successful stream fetches and enrich them
     for result in results {
         match result {
             Ok(mut stream_info) => {
@@ -230,30 +229,25 @@ async fn scrape_platform(
         }
     }
 
-    // Store streams in smaller batches to reduce concurrent write pressure
-    const BATCH_SIZE: usize = 5;
-    for chunk in streams_to_store.chunks(BATCH_SIZE) {
-        // Process each mini-batch concurrently but limit the batch size
-        let mut tasks = Vec::new();
-        for stream in chunk {
-            let store = store.clone();
-            let stream = stream.clone();
-            let task = tokio::spawn(async move { store.upsert_stream(&stream).await });
-            tasks.push(task);
-        }
-
-        // Wait for this batch to complete before moving to the next
-        for task in tasks {
-            match task.await {
-                Ok(Ok(_)) => success_count += 1,
-                Ok(Err(e)) => {
-                    error!("Failed to store stream info: {}", e);
-                    failed_count += 1;
-                }
-                Err(e) => {
-                    error!("Task join error: {}", e);
-                    failed_count += 1;
-                }
+    // Store all streams in a single batch transaction - much faster than individual upserts!
+    let success_count = streams_to_store.len();
+    if !streams_to_store.is_empty() {
+        match store.batch_upsert_streams(&streams_to_store).await {
+            Ok(_) => {
+                debug!(
+                    "Successfully stored {} streams from {} in batch",
+                    success_count, platform_id
+                );
+            }
+            Err(e) => {
+                error!(
+                    "Failed to batch store {} streams from {}: {}",
+                    streams_to_store.len(),
+                    platform_id,
+                    e
+                );
+                // All streams in this batch failed
+                return (0, streams_to_store.len() + failed_count);
             }
         }
     }
