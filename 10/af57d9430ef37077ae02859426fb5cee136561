@@ -1,0 +1,27 @@
+README.md
+  s_35361b98eec494::t_52df5dd8da7738 9
+docs/PLATFORMS.md
+  s_35361b98eec494::t_26040062265e6a 663
+  s_35361b98eec494::t_ac1b0e9d753ec6 715
+  s_35361b98eec494::t_ffe1e2490acefa 751
+docs/DEPLOYMENT.md
+  s_35361b98eec494::t_54a38b5da8f3d7 674
+.env.example
+  s_35361b98eec494::t_2e31d9daa772a8 62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "10af57d9430ef37077ae02859426fb5cee136561",
+  "prompts": {},
+  "sessions": {
+    "s_35361b98eec494": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "51a2a301-3c59-4534-9048-f9e29857335e",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thomas Lekanger <thomas.lekanger@hotmail.com>"
+    }
+  }
+}
