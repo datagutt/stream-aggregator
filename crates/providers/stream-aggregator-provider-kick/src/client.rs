@@ -348,9 +348,7 @@ impl PlatformProvider for KickProvider {
         for tag in tag_queries {
             let page = self.fetch_livestreams_page(filters, limit, tag).await?;
             for streamer in page {
-                merged
-                    .entry(streamer.user_id.clone())
-                    .or_insert(streamer);
+                merged.entry(streamer.user_id.clone()).or_insert(streamer);
             }
         }
 
