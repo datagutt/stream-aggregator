@@ -1,0 +1,34 @@
+crates/stream-aggregator-api/src/handlers.rs
+  s_268a6765f9af95::t_0b1ba800a43502 60-63,66-67,74-79,97,102-104
+  s_268a6765f9af95::t_3cb152dc50d2da 58-59
+crates/stream-aggregator-store/src/memory.rs
+  s_268a6765f9af95::t_596aea9f1f426a 462-523
+  s_268a6765f9af95::t_60d8fa927705c0 95-97
+  s_268a6765f9af95::t_88183f270ac1c6 149-153,157-161,165-169
+crates/stream-aggregator-core/src/models.rs
+  s_268a6765f9af95::t_2d37d3c6599dc3 372-375,390-393,395-397,399-402
+README.md
+  s_268a6765f9af95::t_463b381a5d0c7d 75-76
+docs/API.md
+  s_268a6765f9af95::t_6deee406776d05 87-90
+  s_268a6765f9af95::t_121d04cf51cae3 26,33-35
+crates/stream-aggregator-store/src/diesel_store.rs
+  s_268a6765f9af95::t_7c1b76997c5d3b 303-304,311-312,315-316,336-356
+  s_268a6765f9af95::t_ea935336352290 849-900
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "20dd092fec7c07f96f12696af338f3c4d00cec33",
+  "prompts": {},
+  "sessions": {
+    "s_268a6765f9af95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2acb2e8f-01ef-4732-8915-2195ceb85313",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thomas Lekanger <thomas.lekanger@hotmail.com>"
+    }
+  }
+}
