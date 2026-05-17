@@ -1,0 +1,26 @@
+web/components/admin/streamer-table.tsx
+  s_268a6765f9af95::t_23c99c1c6796a2 1-106,108-124
+  s_268a6765f9af95::t_86c2d23ac94ec7 107
+web/components/admin/add-streamer-form.tsx
+  s_268a6765f9af95::t_52bdcca0692f16 1-121
+web/app/admin/streamers/page.tsx
+  s_268a6765f9af95::t_551045a1969dc8 1-29
+web/app/admin/streamers/actions.ts
+  s_268a6765f9af95::t_f34f4e0b8c51a2 1-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "98a4e9f12bbeff5dd30eec88284721dc2860720d",
+  "prompts": {},
+  "sessions": {
+    "s_268a6765f9af95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2acb2e8f-01ef-4732-8915-2195ceb85313",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thomas Lekanger <thomas.lekanger@hotmail.com>"
+    }
+  }
+}
