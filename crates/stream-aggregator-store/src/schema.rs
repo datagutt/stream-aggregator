@@ -1,6 +1,32 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
+    communities (slug) {
+        slug -> Text,
+        name -> Text,
+        tagline -> Nullable<Text>,
+        accent -> Text,
+        accent_contrast -> Nullable<Text>,
+        logo_url -> Nullable<Text>,
+        default_theme -> Text,
+        filter -> Text,
+        about_md -> Nullable<Text>,
+        created_at -> Text,
+        updated_at -> Text,
+    }
+}
+
+diesel::table! {
+    community_domains (host) {
+        host -> Text,
+        slug -> Text,
+        created_at -> Text,
+    }
+}
+
+diesel::joinable!(community_domains -> communities (slug));
+
+diesel::table! {
     discovery_rules (id) {
         id -> Text,
         name -> Text,
@@ -50,4 +76,10 @@ diesel::table! {
     }
 }
 
-diesel::allow_tables_to_appear_in_same_query!(discovery_rules, streams, tracked_streamers,);
+diesel::allow_tables_to_appear_in_same_query!(
+    communities,
+    community_domains,
+    discovery_rules,
+    streams,
+    tracked_streamers,
+);
