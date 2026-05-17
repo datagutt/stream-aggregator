@@ -1,0 +1,27 @@
+web/lib/auth.ts
+  s_268a6765f9af95::t_72c8fa34cb41e7 1-43
+web/lib/api-types.ts
+  s_268a6765f9af95::t_48c6019d9907f1 1-228
+web/lib/api.ts
+  s_268a6765f9af95::t_3b9ca3fef8df88 1-416
+web/lib/format.ts
+  s_268a6765f9af95::t_72c90b0d5ed6b5 1-79
+web/lib/communities.ts
+  s_268a6765f9af95::t_ddbcbd3f913e80 1-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "f0b598e668572476430a6ced8700ca11a596da60",
+  "prompts": {},
+  "sessions": {
+    "s_268a6765f9af95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2acb2e8f-01ef-4732-8915-2195ceb85313",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thomas Lekanger <thomas.lekanger@hotmail.com>"
+    }
+  }
+}
