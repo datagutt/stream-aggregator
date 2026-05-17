@@ -297,7 +297,7 @@ impl PlatformProvider for KickProvider {
             stream_info.is_live = false;
         }
 
-        stream_info.last_updated = Utc::now();
+        stream_info.last_fetched_at = Utc::now();
 
         Ok(stream_info)
     }

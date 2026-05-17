@@ -28,10 +28,17 @@ pub struct AngelThumpUser {
     pub thumbnail: Option<String>,
 }
 
-/// AngelThump stream response (API returns an array)
+/// AngelThump stream response (API returns an array).
+///
+/// `createdAt` marks when the stream went live on the platform and is the
+/// source for `StreamInfo::started_at`. `updatedAt` is the platform's own
+/// heartbeat and is intentionally not consumed: our `last_fetched_at` covers
+/// recency from our side.
 #[derive(Debug, Deserialize)]
 pub struct AngelThumpStream {
     pub username: String,
     #[serde(default)]
     pub viewer_count: Option<u64>,
+    #[serde(default, rename = "createdAt")]
+    pub created_at: Option<String>,
 }

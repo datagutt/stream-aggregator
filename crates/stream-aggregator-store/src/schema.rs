@@ -30,7 +30,8 @@ diesel::table! {
         tags -> Text,
         language -> Nullable<Text>,
         started_at -> Nullable<Text>,
-        last_updated -> Text,
+        last_fetched_at -> Text,
+        last_live_at -> Nullable<Text>,
         metadata -> Text,
     }
 }

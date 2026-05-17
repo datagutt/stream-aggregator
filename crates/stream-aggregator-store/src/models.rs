@@ -30,7 +30,8 @@ pub struct StreamRow {
     pub tags: String,
     pub language: Option<String>,
     pub started_at: Option<String>,
-    pub last_updated: String,
+    pub last_fetched_at: String,
+    pub last_live_at: Option<String>,
     pub metadata: String,
 }
 
@@ -50,7 +51,8 @@ pub struct NewStream<'a> {
     pub tags: String,
     pub language: Option<&'a str>,
     pub started_at: Option<String>,
-    pub last_updated: String,
+    pub last_fetched_at: String,
+    pub last_live_at: Option<String>,
     pub metadata: String,
 }
 
@@ -67,9 +69,15 @@ impl StreamRow {
             .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
             .map(|dt| dt.with_timezone(&Utc));
 
-        let last_updated = DateTime::parse_from_rfc3339(&self.last_updated)
+        let last_fetched_at = DateTime::parse_from_rfc3339(&self.last_fetched_at)
             .map(|dt| dt.with_timezone(&Utc))
             .unwrap_or_else(|_| Utc::now());
+
+        let last_live_at = self
+            .last_live_at
+            .as_ref()
+            .and_then(|s| DateTime::parse_from_rfc3339(s).ok())
+            .map(|dt| dt.with_timezone(&Utc));
 
         Ok(StreamInfo {
             id: StreamId(self.id.clone()),
@@ -85,7 +93,8 @@ impl StreamRow {
             tags,
             language: self.language.clone(),
             started_at,
-            last_updated,
+            last_fetched_at,
+            last_live_at,
             metadata,
         })
     }
@@ -97,7 +106,8 @@ impl<'a> NewStream<'a> {
         let tags = serde_json::to_string(&stream.tags)?;
         let metadata = serde_json::to_string(&stream.metadata)?;
         let started_at = stream.started_at.map(|dt| dt.to_rfc3339());
-        let last_updated = stream.last_updated.to_rfc3339();
+        let last_fetched_at = stream.last_fetched_at.to_rfc3339();
+        let last_live_at = stream.last_live_at.map(|dt| dt.to_rfc3339());
 
         Ok(Self {
             id: &stream.id.0,
@@ -113,7 +123,8 @@ impl<'a> NewStream<'a> {
             tags,
             language: stream.language.as_deref(),
             started_at,
-            last_updated,
+            last_fetched_at,
+            last_live_at,
             metadata,
         })
     }

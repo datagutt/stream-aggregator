@@ -70,14 +70,53 @@ pub struct StreamInfo {
     /// When the stream started (if live)
     pub started_at: Option<DateTime<Utc>>,
 
-    /// Last time this data was fetched
-    pub last_updated: DateTime<Utc>,
+    /// Last time this data was fetched from the upstream platform.
+    /// This is when our system polled the platform, not when the stream
+    /// went live. See `last_live_at` for the latter.
+    pub last_fetched_at: DateTime<Utc>,
+
+    /// Last time the streamer was observed live.
+    /// While `is_live` is true, this mirrors `started_at` when the platform
+    /// surfaces it. When the streamer goes offline, this sticks at the
+    /// previous value (when they were last seen live). `None` if never
+    /// observed live.
+    pub last_live_at: Option<DateTime<Utc>>,
 
     /// Custom metadata (platform-specific data, user-defined labels, etc.)
     pub metadata: HashMap<String, serde_json::Value>,
 }
 
 impl StreamInfo {
+    /// Compute `last_live_at` for an incoming observation, given the prior
+    /// stored value (if any) and whether the streamer was live in that prior
+    /// observation.
+    ///
+    /// Providers build `StreamInfo` fresh per poll with no view of prior state,
+    /// so storage layers call this when persisting:
+    ///   * Live with `started_at` from the platform: use that timestamp.
+    ///   * Live with no `started_at` (most providers): stamp `now` on
+    ///     offline→live transitions; otherwise carry the prior value.
+    ///   * Offline: keep the prior value (sticky).
+    pub fn merge_last_live_at(
+        is_live: bool,
+        started_at: Option<DateTime<Utc>>,
+        prior_last_live_at: Option<DateTime<Utc>>,
+        prior_was_live: bool,
+        now: DateTime<Utc>,
+    ) -> Option<DateTime<Utc>> {
+        if !is_live {
+            return prior_last_live_at;
+        }
+        if let Some(started) = started_at {
+            return Some(started);
+        }
+        if prior_was_live {
+            prior_last_live_at
+        } else {
+            Some(now)
+        }
+    }
+
     /// Create a new StreamInfo with required fields
     pub fn new(
         platform: impl Into<String>,
@@ -102,7 +141,8 @@ impl StreamInfo {
             tags: Vec::new(),
             language: None,
             started_at: None,
-            last_updated: Utc::now(),
+            last_fetched_at: Utc::now(),
+            last_live_at: None,
             metadata: HashMap::new(),
         }
     }

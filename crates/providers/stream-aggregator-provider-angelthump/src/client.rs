@@ -1,7 +1,7 @@
 //! AngelThump provider client implementation
 
 use async_trait::async_trait;
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use tracing::debug;
 use wreq::Client;
 
@@ -117,13 +117,19 @@ impl PlatformProvider for AngelThumpProvider {
 
         let is_live = stream.is_some();
         let viewer_count = stream.as_ref().and_then(|s| s.viewer_count);
+        let started_at = stream
+            .as_ref()
+            .and_then(|s| s.created_at.as_deref())
+            .and_then(|raw| DateTime::parse_from_rfc3339(raw).ok())
+            .map(|dt| dt.with_timezone(&Utc));
 
         let mut stream_info = StreamInfo::new("angelthump", user_id, &user.username);
         stream_info.is_live = is_live;
         stream_info.title = user.title;
         stream_info.thumbnail_url = user.thumbnail;
         stream_info.viewer_count = viewer_count;
-        stream_info.last_updated = Utc::now();
+        stream_info.started_at = started_at;
+        stream_info.last_fetched_at = Utc::now();
 
         Ok(stream_info)
     }

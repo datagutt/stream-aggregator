@@ -279,7 +279,7 @@ impl YouTubeProvider {
             is_live: live_info.is_live,
             title: live_info.title,
             viewer_count: live_info.viewers,
-            last_updated: Utc::now(),
+            last_fetched_at: Utc::now(),
         })
     }
     
@@ -540,7 +540,7 @@ impl PlatformProvider for TikTokProvider {
             is_live: state.is_connected,
             title: state.room_title.clone(),
             viewer_count: Some(state.viewer_count),
-            last_updated: Utc::now(),
+            last_fetched_at: Utc::now(),
             ..Default::default()
         })
     }
@@ -706,7 +706,7 @@ impl GuacProvider {
             title: stream.title,
             viewer_count: stream.viewers,
             thumbnail_url: stream.banner,
-            last_updated: Utc::now(),
+            last_fetched_at: Utc::now(),
         })
     }
 }
@@ -794,7 +794,7 @@ impl RobotStreamerProvider {
             display_name: robot.robot_name.unwrap_or(user_id.to_string()),
             is_live,
             viewer_count: robot.viewers,
-            last_updated: Utc::now(),
+            last_fetched_at: Utc::now(),
         })
     }
 }

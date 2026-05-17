@@ -1,9 +1,11 @@
 //! Diesel-based SQLite storage implementation
 
 use async_trait::async_trait;
+use chrono::{DateTime, Utc};
 use diesel::prelude::*;
 use diesel::r2d2::{ConnectionManager, CustomizeConnection, Pool};
 use diesel::sqlite::SqliteConnection;
+use std::collections::HashMap;
 use std::sync::Arc;
 use tracing::{debug, trace};
 
@@ -13,6 +15,11 @@ use crate::models::*;
 use crate::schema::{discovery_rules, streams, tracked_streamers};
 
 type DbPool = Pool<ConnectionManager<SqliteConnection>>;
+
+fn parse_rfc3339_opt(s: Option<&str>) -> Option<DateTime<Utc>> {
+    s.and_then(|raw| DateTime::parse_from_rfc3339(raw).ok())
+        .map(|dt| dt.with_timezone(&Utc))
+}
 
 /// SQLite connection customizer to enable WAL mode and set busy timeout
 #[derive(Debug, Clone, Copy)]
@@ -120,7 +127,6 @@ impl StreamStore for DieselStore {
     async fn upsert_stream(&self, stream: &StreamInfo) -> Result<(), StoreError> {
         trace!(stream_id = %stream.id, platform = %stream.platform, "Upserting stream");
 
-        // Clone stream data to move into spawn_blocking
         let stream = stream.clone();
         let pool = Arc::clone(&self.pool);
 
@@ -129,15 +135,37 @@ impl StreamStore for DieselStore {
                 .get()
                 .map_err(|e| StoreError::ConnectionError(e.to_string()))?;
 
-            let new_stream = NewStream::from_stream_info(&stream)
-                .map_err(|e| StoreError::SerializationError(e.to_string()))?;
+            conn.transaction::<_, diesel::result::Error, _>(|conn| {
+                let prior: Option<(bool, Option<String>)> = streams::table
+                    .find(&stream.id.0)
+                    .select((streams::is_live, streams::last_live_at))
+                    .first::<(bool, Option<String>)>(conn)
+                    .optional()?;
 
-            diesel::replace_into(streams::table)
-                .values(&new_stream)
-                .execute(&mut conn)
-                .map_err(|e| StoreError::QueryError(e.to_string()))?;
+                let (prior_was_live, prior_last_live) = match prior {
+                    Some((live, ts)) => (live, parse_rfc3339_opt(ts.as_deref())),
+                    None => (false, None),
+                };
 
-            Ok::<(), StoreError>(())
+                let mut merged = stream.clone();
+                merged.last_live_at = StreamInfo::merge_last_live_at(
+                    merged.is_live,
+                    merged.started_at,
+                    prior_last_live,
+                    prior_was_live,
+                    Utc::now(),
+                );
+
+                let new_stream = NewStream::from_stream_info(&merged)
+                    .map_err(|e| diesel::result::Error::DeserializationError(Box::new(e)))?;
+
+                diesel::replace_into(streams::table)
+                    .values(&new_stream)
+                    .execute(conn)?;
+
+                Ok(())
+            })
+            .map_err(|e| StoreError::QueryError(e.to_string()))
         })
         .await
         .map_err(|e| StoreError::QueryError(format!("Task join error: {}", e)))??;
@@ -161,16 +189,51 @@ impl StreamStore for DieselStore {
                 .get()
                 .map_err(|e| StoreError::ConnectionError(e.to_string()))?;
 
-            // Use a transaction for atomicity and performance
             conn.transaction::<_, diesel::result::Error, _>(|conn| {
-                // SQLite has a limit of 999 parameters per query
-                // Each stream has ~15 fields, so we chunk to stay well under the limit
+                // SQLite has a limit of 999 parameters per query. Each stream has
+                // ~16 fields, so we chunk to stay well under the limit.
                 const CHUNK_SIZE: usize = 50;
 
                 for chunk in streams.chunks(CHUNK_SIZE) {
-                    let new_streams: Vec<NewStream> = chunk
+                    let ids: Vec<&str> = chunk.iter().map(|s| s.id.0.as_str()).collect();
+
+                    // Read prior (is_live, last_live_at) for all rows in this chunk
+                    let prior_rows: Vec<(String, bool, Option<String>)> = streams::table
+                        .select((streams::id, streams::is_live, streams::last_live_at))
+                        .filter(streams::id.eq_any(&ids))
+                        .load(conn)?;
+
+                    let prior_by_id: HashMap<String, (bool, Option<String>)> = prior_rows
+                        .into_iter()
+                        .map(|(id, live, ts)| (id, (live, ts)))
+                        .collect();
+
+                    let now = Utc::now();
+                    let merged_chunk: Vec<StreamInfo> = chunk
                         .iter()
-                        .map(|s| NewStream::from_stream_info(s))
+                        .map(|s| {
+                            let (prior_was_live, prior_last_live) = prior_by_id
+                                .get(&s.id.0)
+                                .map(|(live, ts)| {
+                                    (*live, parse_rfc3339_opt(ts.as_deref()))
+                                })
+                                .unwrap_or((false, None));
+
+                            let mut merged = s.clone();
+                            merged.last_live_at = StreamInfo::merge_last_live_at(
+                                merged.is_live,
+                                merged.started_at,
+                                prior_last_live,
+                                prior_was_live,
+                                now,
+                            );
+                            merged
+                        })
+                        .collect();
+
+                    let new_streams: Vec<NewStream> = merged_chunk
+                        .iter()
+                        .map(NewStream::from_stream_info)
                         .collect::<Result<Vec<_>, _>>()
                         .map_err(|e| diesel::result::Error::DeserializationError(Box::new(e)))?;
 
@@ -299,8 +362,14 @@ impl StreamStore for DieselStore {
                 ("name", false) => data_query.order(streams::display_name.desc()),
                 ("platform", true) => data_query.order(streams::platform.asc()),
                 ("platform", false) => data_query.order(streams::platform.desc()),
-                ("updated", true) => data_query.order(streams::last_updated.asc()),
-                ("updated", false) => data_query.order(streams::last_updated.desc()),
+                ("updated" | "fetched", true) => {
+                    data_query.order(streams::last_fetched_at.asc())
+                }
+                ("updated" | "fetched", false) => {
+                    data_query.order(streams::last_fetched_at.desc())
+                }
+                ("live", true) => data_query.order(streams::last_live_at.asc()),
+                ("live", false) => data_query.order(streams::last_live_at.desc()),
                 ("viewers", true) | (_, true) => data_query
                     .order(streams::viewer_count.asc())
                     .then_order_by(streams::display_name.asc()),

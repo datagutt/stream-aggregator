@@ -32,7 +32,7 @@ Retrieve all streams with optional filtering and pagination.
 | `max_viewers` | integer | Maximum viewer count |
 | `category` | string | Filter by game/category |
 | `language` | string | Filter by stream language |
-| `sort` | string | Sort field: `viewers`, `name`, `platform`, `updated` (default: `viewers`) |
+| `sort` | string | Sort field: `viewers`, `name`, `platform`, `fetched` (when we last polled, alias `updated`), `live` (when streamer was last observed live). Default: `viewers`. |
 | `order` | string | Sort order: `asc` or `desc` (default: `desc`) |
 | `page` | integer | Page number (default: 1) |
 | `per_page` | integer | Items per page (default: 50, max: 100) |
@@ -56,7 +56,8 @@ Retrieve all streams with optional filtering and pagination.
       "tags": ["English", "FPS"],
       "language": "en",
       "started_at": "2024-01-15T14:30:00Z",
-      "last_updated": "2024-01-15T15:00:00Z",
+      "last_fetched_at": "2024-01-15T15:00:00Z",
+      "last_live_at": "2024-01-15T14:30:00Z",
       "metadata": {
         "group": "fps-pros",
         "priority": 1,

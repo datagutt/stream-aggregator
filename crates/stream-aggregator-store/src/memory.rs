@@ -1,6 +1,7 @@
 //! In-memory storage implementation using DashMap
 
 use async_trait::async_trait;
+use chrono::Utc;
 use dashmap::DashMap;
 use std::sync::Arc;
 use tracing::{debug, trace};
@@ -33,6 +34,22 @@ impl MemoryStore {
     fn streamer_key(platform: &str, user_id: &str) -> String {
         format!("{}:{}", platform, user_id)
     }
+
+    /// Merge `last_live_at` from the existing row into the incoming stream.
+    /// Storage layer is the single chokepoint that sees prior state.
+    fn merge_last_live_at(&self, incoming: &mut StreamInfo) {
+        let existing = self.streams.get(&incoming.id.0);
+        let prior_last_live = existing.as_ref().and_then(|e| e.last_live_at);
+        let prior_was_live = existing.as_ref().map(|e| e.is_live).unwrap_or(false);
+
+        incoming.last_live_at = StreamInfo::merge_last_live_at(
+            incoming.is_live,
+            incoming.started_at,
+            prior_last_live,
+            prior_was_live,
+            Utc::now(),
+        );
+    }
 }
 
 impl Default for MemoryStore {
@@ -45,14 +62,18 @@ impl Default for MemoryStore {
 impl StreamStore for MemoryStore {
     async fn upsert_stream(&self, stream: &StreamInfo) -> Result<(), StoreError> {
         trace!(stream_id = %stream.id, platform = %stream.platform, "Upserting stream");
-        self.streams.insert(stream.id.0.clone(), stream.clone());
+        let mut merged = stream.clone();
+        self.merge_last_live_at(&mut merged);
+        self.streams.insert(merged.id.0.clone(), merged);
         Ok(())
     }
 
     async fn batch_upsert_streams(&self, streams: &[StreamInfo]) -> Result<(), StoreError> {
         debug!("Batch upserting {} streams", streams.len());
         for stream in streams {
-            self.streams.insert(stream.id.0.clone(), stream.clone());
+            let mut merged = stream.clone();
+            self.merge_last_live_at(&mut merged);
+            self.streams.insert(merged.id.0.clone(), merged);
         }
         Ok(())
     }
@@ -176,7 +197,8 @@ impl StreamStore for MemoryStore {
             let ordering = match sort_field {
                 "name" => a.display_name.cmp(&b.display_name),
                 "platform" => a.platform.cmp(&b.platform),
-                "updated" => a.last_updated.cmp(&b.last_updated),
+                "updated" | "fetched" => a.last_fetched_at.cmp(&b.last_fetched_at),
+                "live" => a.last_live_at.cmp(&b.last_live_at),
                 "viewers" => b
                     .viewer_count
                     .unwrap_or(0)

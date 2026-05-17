@@ -170,7 +170,7 @@ impl PlatformProvider for YouTubeProvider {
         stream_info.is_live = live;
         stream_info.title = title;
         stream_info.viewer_count = viewers;
-        stream_info.last_updated = Utc::now();
+        stream_info.last_fetched_at = Utc::now();
 
         Ok(stream_info)
     }

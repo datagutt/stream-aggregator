@@ -96,7 +96,7 @@ impl PlatformProvider for RobotStreamerProvider {
         let mut stream_info = StreamInfo::new("robotstreamer", user_id, display_name);
         stream_info.is_live = is_live;
         stream_info.viewer_count = robot.viewers;
-        stream_info.last_updated = Utc::now();
+        stream_info.last_fetched_at = Utc::now();
 
         Ok(stream_info)
     }

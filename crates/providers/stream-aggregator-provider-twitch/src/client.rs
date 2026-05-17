@@ -258,7 +258,7 @@ impl TwitchProvider {
             stream_info.is_live = false;
         }
 
-        stream_info.last_updated = Utc::now();
+        stream_info.last_fetched_at = Utc::now();
 
         Ok(stream_info)
     }
@@ -453,7 +453,7 @@ impl PlatformProvider for TwitchProvider {
                                 StreamInfo::new("twitch", &user.id, &user.display_name);
                             stream_info.avatar_url = Some(user.profile_image_url.clone());
                             stream_info.is_live = false;
-                            stream_info.last_updated = Utc::now();
+                            stream_info.last_fetched_at = Utc::now();
                             results.push(Ok(stream_info));
                         } else {
                             results.push(Err(ProviderError::StreamerNotFound(user_id.to_string())));
@@ -477,7 +477,7 @@ impl PlatformProvider for TwitchProvider {
                             StreamInfo::new("twitch", &user.id, &user.display_name);
                         stream_info.avatar_url = Some(user.profile_image_url.clone());
                         stream_info.is_live = false;
-                        stream_info.last_updated = Utc::now();
+                        stream_info.last_fetched_at = Utc::now();
                         results.push(Ok(stream_info));
                     } else {
                         results.push(Err(ProviderError::StreamerNotFound(user_id.to_string())));
@@ -503,7 +503,7 @@ impl PlatformProvider for TwitchProvider {
                                 StreamInfo::new("twitch", &user.id, &user.display_name);
                             stream_info.avatar_url = Some(user.profile_image_url.clone());
                             stream_info.is_live = false;
-                            stream_info.last_updated = Utc::now();
+                            stream_info.last_fetched_at = Utc::now();
                             results.push(Ok(stream_info));
                         } else {
                             results.push(Err(ProviderError::StreamerNotFound(user_id.to_string())));
@@ -553,7 +553,7 @@ impl PlatformProvider for TwitchProvider {
                         stream_info.is_live = false;
                     }
 
-                    stream_info.last_updated = Utc::now();
+                    stream_info.last_fetched_at = Utc::now();
                     debug!(
                         "Successfully processed stream for {} (live: {})",
                         user_id, stream_info.is_live

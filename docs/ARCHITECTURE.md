@@ -236,8 +236,11 @@ pub struct StreamInfo {
     /// When the stream started (if live)
     pub started_at: Option<DateTime<Utc>>,
     
-    /// Last time this data was fetched
-    pub last_updated: DateTime<Utc>,
+    /// Last time we polled the upstream platform.
+    pub last_fetched_at: DateTime<Utc>,
+    
+    /// Last time the streamer was observed live (sticky across offline polls).
+    pub last_live_at: Option<DateTime<Utc>>,
     
     /// Custom metadata (user-defined labels, groups, etc.)
     pub metadata: HashMap<String, serde_json::Value>,

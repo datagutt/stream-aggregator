@@ -311,7 +311,7 @@ impl TikTokProvider {
         stream_info.thumbnail_url = data.thumbnail_url.clone();
         stream_info.viewer_count = data.viewer_count;
         stream_info.title = data.title.clone();
-        stream_info.last_updated = Utc::now();
+        stream_info.last_fetched_at = Utc::now();
 
         stream_info
     }

@@ -85,7 +85,7 @@ impl PlatformProvider for GuacProvider {
         stream_info.viewer_count = stream.viewers;
         stream_info.thumbnail_url = stream.banner; // Use banner as thumbnail
         stream_info.avatar_url = stream.user.avatar;
-        stream_info.last_updated = Utc::now();
+        stream_info.last_fetched_at = Utc::now();
 
         Ok(stream_info)
     }
