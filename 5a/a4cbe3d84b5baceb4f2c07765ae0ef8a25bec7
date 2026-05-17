@@ -1,0 +1,31 @@
+crates/stream-aggregator-api/tests/communities.rs
+  s_268a6765f9af95::t_e255c81657a951 72-74
+  s_268a6765f9af95::t_38fb8263fc212c 1-10,12-29,31-71,75-228
+  s_268a6765f9af95::t_81e029634b88cf 30
+  s_268a6765f9af95::t_0229a061947479 11
+crates/stream-aggregator-api/src/middleware.rs
+  s_268a6765f9af95::t_fa1b5f0fc6641e 111
+crates/stream-aggregator-api/src/handlers.rs
+  s_268a6765f9af95::t_04e872713c8469 288-416
+crates/stream-aggregator-api/src/router.rs
+  s_268a6765f9af95::t_631f96e9448922 5
+  s_268a6765f9af95::t_d49aa877b93d57 52-64
+docs/API.md
+  s_268a6765f9af95::t_71dc15607a1256 431-503
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "5aa4cbe3d84b5baceb4f2c07765ae0ef8a25bec7",
+  "prompts": {},
+  "sessions": {
+    "s_268a6765f9af95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2acb2e8f-01ef-4732-8915-2195ceb85313",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thomas Lekanger <thomas.lekanger@hotmail.com>"
+    }
+  }
+}
