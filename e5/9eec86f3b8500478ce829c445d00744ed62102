@@ -1,0 +1,50 @@
+web/.gitignore
+  s_268a6765f9af95::t_fc670c70379944 1-41
+web/app/layout.tsx
+  s_268a6765f9af95::t_fc670c70379944 1-3,5-8,10-14,16-18,21-22,24,33-35
+  s_268a6765f9af95::t_d2cc24bb953abf 4,9,15,19-20,23,25-32
+web/app/page.tsx
+  s_268a6765f9af95::t_6124a0ed482621 1-6,9-18
+  s_268a6765f9af95::t_fc670c70379944 7-8,19-20
+web/postcss.config.mjs
+  s_268a6765f9af95::t_80eaa2e1f272f3 1-7
+web/CLAUDE.md
+  s_268a6765f9af95::t_fc670c70379944 1
+web/tsconfig.json
+  s_268a6765f9af95::t_fc670c70379944 1-34
+web/package.json
+  s_268a6765f9af95::t_044571185e266c 11-14,16-17,19-21
+  s_268a6765f9af95::t_a29caca6856e17 24
+  s_268a6765f9af95::t_fc670c70379944 1-10,15,18,22-23,25-38
+web/README.md
+  s_268a6765f9af95::t_fc670c70379944 1-36
+web/app/providers.tsx
+  s_268a6765f9af95::t_d96010915d1cbe 1-22
+DESIGN.md
+  s_268a6765f9af95::t_6db5c68ea9a21e 5,7,10,12
+web/next.config.ts
+  s_268a6765f9af95::t_fc670c70379944 1-7
+web/AGENTS.md
+  s_268a6765f9af95::t_fc670c70379944 1-5
+.gitignore
+  s_268a6765f9af95::t_a1605ee4f93de8 25-32
+web/app/globals.css
+  s_268a6765f9af95::t_340a3c5976398d 1-10,12-36,39-62,67,72-73,78,87-90,92-96
+  s_268a6765f9af95::t_fc670c70379944 11,37-38,63-66,68-71,74-77,79-86,91,97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "e59eec86f3b8500478ce829c445d00744ed62102",
+  "prompts": {},
+  "sessions": {
+    "s_268a6765f9af95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2acb2e8f-01ef-4732-8915-2195ceb85313",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thomas Lekanger <thomas.lekanger@hotmail.com>"
+    }
+  }
+}
