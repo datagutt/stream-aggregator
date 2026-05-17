@@ -1,0 +1,37 @@
+web/components/platform-pill.tsx
+  s_268a6765f9af95::t_74f06332a0697a 1-29
+web/app/c/[slug]/page.tsx
+  s_268a6765f9af95::t_74892b34cad5ae 1-39
+web/proxy.ts
+  s_268a6765f9af95::t_b8eef3f606274b 53
+  s_268a6765f9af95::t_6729b6fbf21f78 6-8
+web/components/theme-toggle.tsx
+  s_268a6765f9af95::t_1ceec30f7da54f 1-29
+web/components/live-pill.tsx
+  s_268a6765f9af95::t_3e8e84a1d7c645 1-18
+web/components/stream-card.tsx
+  s_268a6765f9af95::t_79a4eba87fc080 1-85
+web/components/community-header.tsx
+  s_268a6765f9af95::t_257aa5afbc9187 1-68
+web/app/c/[slug]/layout.tsx
+  s_268a6765f9af95::t_b9c5d93984ef1a 1-41
+web/components/stream-grid.tsx
+  s_268a6765f9af95::t_f2933f78be3f3f 1-50,54-55,58-59,61-194
+  s_268a6765f9af95::t_2c3126569598d3 51-53,56-57,60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "89e61b5060f132c1f2d8d19a8da23cf09d940e12",
+  "prompts": {},
+  "sessions": {
+    "s_268a6765f9af95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2acb2e8f-01ef-4732-8915-2195ceb85313",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thomas Lekanger <thomas.lekanger@hotmail.com>"
+    }
+  }
+}
