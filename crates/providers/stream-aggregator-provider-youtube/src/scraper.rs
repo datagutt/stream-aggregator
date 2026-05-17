@@ -164,8 +164,10 @@ impl PlatformProvider for YouTubeProvider {
             }
         }
 
-        // Build stream info
+        // Build stream info. YouTube channel IDs (UC...) are the URL slug,
+        // so login == user_id.
         let mut stream_info = StreamInfo::new("youtube", user_id, &name);
+        stream_info.login = Some(user_id.to_string());
         stream_info.avatar_url = avatar;
         stream_info.is_live = live;
         stream_info.title = title;

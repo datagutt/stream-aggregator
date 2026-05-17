@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { StreamInfo } from "@/lib/api-types";
 import { formatViewersCompact, initials, streamUrl, timeSince } from "@/lib/format";
 import { LivePill } from "./live-pill";
@@ -9,14 +10,33 @@ interface Props {
 
 export function StreamCard({ stream }: Props) {
   const live = stream.isLive;
+  const url = streamUrl(stream.platform, stream.login);
+
+  const cardClass =
+    "group focus-visible:ring-brand block overflow-hidden rounded-lg border border-border bg-surface transition-colors duration-200 hover:border-foreground-dim focus-visible:outline-none focus-visible:ring-2";
+
+  const Shell = ({ children }: { children: ReactNode }) =>
+    url ? (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`${stream.displayName} — ${stream.title ?? "offline"} on ${stream.platform}`}
+        className={cardClass}
+      >
+        {children}
+      </a>
+    ) : (
+      <div
+        aria-label={`${stream.displayName} on ${stream.platform} (link unavailable)`}
+        className={cardClass + " cursor-not-allowed opacity-90"}
+      >
+        {children}
+      </div>
+    );
+
   return (
-    <a
-      href={streamUrl(stream.platform, stream.userId)}
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label={`${stream.displayName} — ${stream.title ?? "offline"} on ${stream.platform}`}
-      className="group focus-visible:ring-brand block overflow-hidden rounded-lg border border-border bg-surface transition-colors duration-200 hover:border-foreground-dim focus-visible:outline-none focus-visible:ring-2"
-    >
+    <Shell>
       <div className="relative aspect-video w-full overflow-hidden bg-surface-raised">
         {live && stream.thumbnailUrl ? (
           // Plain <img> per DESIGN.md — no next/image allowlist to maintain.
@@ -80,6 +100,6 @@ export function StreamCard({ stream }: Props) {
           </div>
         </div>
       </div>
-    </a>
+    </Shell>
   );
 }

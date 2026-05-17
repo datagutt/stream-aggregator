@@ -37,10 +37,20 @@ pub struct StreamInfo {
     /// Platform identifier (e.g., "twitch", "youtube")
     pub platform: String,
 
-    /// Platform-specific user ID
+    /// Platform-specific user ID. Stable internal identifier (e.g. Twitch
+    /// numeric ID, YouTube channel ID starting with `UC...`). NOT necessarily
+    /// safe to use in a platform URL — see `login` for that.
     pub user_id: String,
 
-    /// Display name
+    /// URL-safe login / handle for the streamer on the platform (Twitch's
+    /// lowercase `user_login`, YouTube's channel ID, Kick's slug, TikTok's
+    /// unique handle without the `@`, etc). Providers populate this so the
+    /// frontend can build platform URLs without guessing.
+    #[serde(default)]
+    pub login: Option<String>,
+
+    /// Display name (human-readable, may have spaces, mixed case, unicode).
+    /// NOT URL-safe.
     pub display_name: String,
 
     /// Avatar URL
@@ -131,6 +141,7 @@ impl StreamInfo {
             id,
             platform,
             user_id,
+            login: None,
             display_name: display_name.into(),
             avatar_url: None,
             is_live: false,

@@ -124,6 +124,7 @@ impl PlatformProvider for AngelThumpProvider {
             .map(|dt| dt.with_timezone(&Utc));
 
         let mut stream_info = StreamInfo::new("angelthump", user_id, &user.username);
+        stream_info.login = Some(user.username.clone());
         stream_info.is_live = is_live;
         stream_info.title = user.title;
         stream_info.thumbnail_url = user.thumbnail;

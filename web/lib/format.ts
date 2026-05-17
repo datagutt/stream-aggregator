@@ -54,26 +54,37 @@ export function oklchTriplet(triplet: string | null | undefined, fallback: strin
   return `oklch(${triplet})`;
 }
 
-/** Build the platform's canonical stream URL given platform + user id/login. */
-export function streamUrl(platform: string, userId: string): string {
+/**
+ * Build the platform's canonical stream URL.
+ *
+ * `login` is the URL-safe handle the provider populates. We require it for
+ * every platform whose `user_id` is a non-URL identifier (Twitch numeric ID,
+ * YouTube would technically work either way, etc). When login is missing
+ * (historical rows from before the column was added), return `null` so the
+ * caller can render the card as non-clickable rather than producing a broken
+ * URL pointing at the wrong page.
+ */
+export function streamUrl(platform: string, login: string | null): string | null {
+  if (!login) return null;
+  const safe = encodeURIComponent(login);
   switch (platform) {
     case "twitch":
-      return `https://www.twitch.tv/${userId}`;
+      return `https://www.twitch.tv/${safe}`;
     case "youtube":
-      // YouTube IDs are channel IDs starting with UC...; we link the channel
-      // because the canonical "live" URL is the channel page when live.
-      return `https://www.youtube.com/channel/${userId}/live`;
+      // login is the UC... channel ID; the canonical URL surfaces "live"
+      // when the channel is live and the latest video otherwise.
+      return `https://www.youtube.com/channel/${safe}/live`;
     case "kick":
-      return `https://kick.com/${userId}`;
+      return `https://kick.com/${safe}`;
     case "tiktok":
-      return `https://www.tiktok.com/@${userId}/live`;
+      return `https://www.tiktok.com/@${safe}/live`;
     case "guac":
-      return `https://guac.live/${userId}`;
+      return `https://guac.live/${safe}`;
     case "angelthump":
-      return `https://angelthump.com/${userId}`;
+      return `https://angelthump.com/${safe}`;
     case "robotstreamer":
-      return `https://robotstreamer.com/robot/${userId}`;
+      return `https://robotstreamer.com/robot/${safe}`;
     default:
-      return "#";
+      return null;
   }
 }

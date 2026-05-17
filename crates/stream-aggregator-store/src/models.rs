@@ -36,6 +36,7 @@ pub struct StreamRow {
     pub last_fetched_at: String,
     pub last_live_at: Option<String>,
     pub metadata: String,
+    pub login: Option<String>,
 }
 
 #[derive(Debug, Clone, Insertable, AsChangeset)]
@@ -57,6 +58,7 @@ pub struct NewStream<'a> {
     pub last_fetched_at: String,
     pub last_live_at: Option<String>,
     pub metadata: String,
+    pub login: Option<&'a str>,
 }
 
 impl StreamRow {
@@ -86,6 +88,7 @@ impl StreamRow {
             id: StreamId(self.id.clone()),
             platform: self.platform.clone(),
             user_id: self.user_id.clone(),
+            login: self.login.clone(),
             display_name: self.display_name.clone(),
             avatar_url: self.avatar_url.clone(),
             is_live: self.is_live,
@@ -116,6 +119,7 @@ impl<'a> NewStream<'a> {
             id: &stream.id.0,
             platform: &stream.platform,
             user_id: &stream.user_id,
+            login: stream.login.as_deref(),
             display_name: &stream.display_name,
             avatar_url: stream.avatar_url.as_deref(),
             is_live: stream.is_live,

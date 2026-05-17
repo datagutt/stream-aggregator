@@ -59,6 +59,7 @@ diesel::table! {
         last_fetched_at -> Text,
         last_live_at -> Nullable<Text>,
         metadata -> Text,
+        login -> Nullable<Text>,
     }
 }
 

@@ -16,6 +16,10 @@ export interface StreamInfo {
   id: string;
   platform: string;
   userId: string;
+  /** URL-safe handle/login on the platform (e.g. Twitch user_login). Use
+      this — not userId — when building external URLs. May be absent for
+      historical rows from before the provider populated it. */
+  login: string | null;
   displayName: string;
   avatarUrl: string | null;
   isLive: boolean;
@@ -35,6 +39,7 @@ export interface RawStreamInfo {
   id: string;
   platform: string;
   user_id: string;
+  login: string | null;
   display_name: string;
   avatar_url: string | null;
   is_live: boolean;

@@ -80,6 +80,8 @@ impl PlatformProvider for GuacProvider {
         let stream = api_response.data;
 
         let mut stream_info = StreamInfo::new("guac", user_id, &stream.user.username);
+        // Guac usernames are the URL slug.
+        stream_info.login = Some(stream.user.username.clone());
         stream_info.is_live = stream.live;
         stream_info.title = stream.title;
         stream_info.viewer_count = stream.viewers;

@@ -132,6 +132,7 @@ function streamFromRaw(r: RawStreamInfo): StreamInfo {
     id: r.id,
     platform: r.platform,
     userId: r.user_id,
+    login: r.login,
     displayName: r.display_name,
     avatarUrl: r.avatar_url,
     isLive: r.is_live,

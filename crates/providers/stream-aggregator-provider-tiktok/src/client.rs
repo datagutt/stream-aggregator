@@ -306,6 +306,8 @@ impl TikTokProvider {
 
     fn room_data_to_stream_info(&self, user_id: &str, data: &TikTokStreamData) -> StreamInfo {
         let mut stream_info = StreamInfo::new("tiktok", user_id, &data.display_name);
+        // TikTok URLs key off the unique handle, passed to us as user_id.
+        stream_info.login = Some(user_id.to_string());
         stream_info.is_live = data.live;
         stream_info.avatar_url = data.avatar_url.clone();
         stream_info.thumbnail_url = data.thumbnail_url.clone();

@@ -94,6 +94,8 @@ impl PlatformProvider for RobotStreamerProvider {
         let display_name = robot.robot_name.as_deref().unwrap_or(user_id);
 
         let mut stream_info = StreamInfo::new("robotstreamer", user_id, display_name);
+        // RobotStreamer URLs key off the robot id (the user_id we were given).
+        stream_info.login = Some(user_id.to_string());
         stream_info.is_live = is_live;
         stream_info.viewer_count = robot.viewers;
         stream_info.last_fetched_at = Utc::now();

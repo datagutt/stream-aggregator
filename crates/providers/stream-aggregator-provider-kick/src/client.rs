@@ -264,6 +264,8 @@ impl PlatformProvider for KickProvider {
         let channel = self.fetch_channel(user_id).await?;
 
         let mut stream_info = StreamInfo::new("kick", &channel.slug, &channel.user.username);
+        // Kick slugs are already URL-safe and live at kick.com/<slug>.
+        stream_info.login = Some(channel.slug.clone());
 
         // Set avatar
         if let Some(profile_pic) = channel.user.profile_pic {

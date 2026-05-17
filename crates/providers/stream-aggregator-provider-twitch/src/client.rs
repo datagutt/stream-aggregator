@@ -231,6 +231,7 @@ impl TwitchProvider {
         debug!("Found {} stream(s) for user", streams.data.len());
 
         let mut stream_info = StreamInfo::new("twitch", &user.id, &user.display_name);
+        stream_info.login = Some(user.login.clone());
         stream_info.avatar_url = Some(user.profile_image_url.clone());
 
         if let Some(stream) = streams.data.first() {
@@ -451,6 +452,7 @@ impl PlatformProvider for TwitchProvider {
                         if let Some(user) = user_map.get(user_id) {
                             let mut stream_info =
                                 StreamInfo::new("twitch", &user.id, &user.display_name);
+        stream_info.login = Some(user.login.clone());
                             stream_info.avatar_url = Some(user.profile_image_url.clone());
                             stream_info.is_live = false;
                             stream_info.last_fetched_at = Utc::now();
@@ -475,6 +477,7 @@ impl PlatformProvider for TwitchProvider {
                     if let Some(user) = user_map.get(user_id) {
                         let mut stream_info =
                             StreamInfo::new("twitch", &user.id, &user.display_name);
+        stream_info.login = Some(user.login.clone());
                         stream_info.avatar_url = Some(user.profile_image_url.clone());
                         stream_info.is_live = false;
                         stream_info.last_fetched_at = Utc::now();
@@ -501,6 +504,7 @@ impl PlatformProvider for TwitchProvider {
                         if let Some(user) = user_map.get(user_id) {
                             let mut stream_info =
                                 StreamInfo::new("twitch", &user.id, &user.display_name);
+        stream_info.login = Some(user.login.clone());
                             stream_info.avatar_url = Some(user.profile_image_url.clone());
                             stream_info.is_live = false;
                             stream_info.last_fetched_at = Utc::now();
@@ -526,6 +530,7 @@ impl PlatformProvider for TwitchProvider {
             for user_id in chunk {
                 if let Some(user) = user_map.get(user_id) {
                     let mut stream_info = StreamInfo::new("twitch", &user.id, &user.display_name);
+        stream_info.login = Some(user.login.clone());
                     stream_info.avatar_url = Some(user.profile_image_url.clone());
 
                     if let Some(stream) = stream_map.get(user_id) {
