@@ -1,0 +1,67 @@
+crates/stream-aggregator-store/migrations/2026051712000000_rename_last_updated_add_last_live/up.sql
+  s_e9bf70077478af::t_9a3044099a62cd 1-12
+docs/PLATFORMS.md
+  s_e9bf70077478af::t_bb73e82c3801ad 282,543,709,797
+crates/stream-aggregator-store/src/memory.rs
+  s_e9bf70077478af::t_f1a0e5ef08d485 39,42-43,45-51
+  s_e9bf70077478af::t_72f8e74c9a080c 200-201
+  s_e9bf70077478af::t_c671ea8700eba4 4
+  s_e9bf70077478af::t_028b8f78f5f46b 37-38,40-41,44,52
+  s_e9bf70077478af::t_407e70a6ab9b7e 65-67,74-76
+crates/providers/stream-aggregator-provider-robotstreamer/src/client.rs
+  s_e9bf70077478af::t_5b0ccc31fd3c80 99
+docs/ARCHITECTURE.md
+  s_e9bf70077478af::t_6182acb1d0ffe1 239-243
+crates/providers/stream-aggregator-provider-youtube/src/scraper.rs
+  s_e9bf70077478af::t_a132a0da32a926 173
+crates/stream-aggregator-store/src/models.rs
+  s_e9bf70077478af::t_7691da8f65dd57 109-110,126-127
+  s_e9bf70077478af::t_b9c38734b45866 33-34,54-55
+  s_e9bf70077478af::t_7f686cc43ea18d 72,76-81,96-97
+crates/stream-aggregator-store/migrations/2026051712000000_rename_last_updated_add_last_live/down.sql
+  s_e9bf70077478af::t_b344c160eb998c 1-7
+crates/stream-aggregator-store/src/diesel_store.rs
+  s_e9bf70077478af::t_092f5007b6a8a6 138-164,166-168,193-194,198-212,214-236
+  s_e9bf70077478af::t_b9f31e07513fa7 8
+  s_e9bf70077478af::t_232b099f25b167 4
+  s_e9bf70077478af::t_216b2121f2dfe8 365-372
+  s_e9bf70077478af::t_a7fbc13de7cb54 19-23
+crates/providers/stream-aggregator-provider-twitch/src/client.rs
+  s_e9bf70077478af::t_f0bcbf39fe7757 261,456,480,506,556
+crates/providers/stream-aggregator-provider-angelthump/src/models.rs
+  s_e9bf70077478af::t_d64b7dad3467d7 31-36,42-43
+crates/providers/stream-aggregator-provider-tiktok/src/client.rs
+  s_e9bf70077478af::t_4accf49b0aa357 314
+crates/providers/stream-aggregator-provider-guac/src/client.rs
+  s_e9bf70077478af::t_0758ed3dfdbf00 88
+crates/providers/stream-aggregator-provider-kick/src/client.rs
+  s_e9bf70077478af::t_1859449204c080 300
+crates/stream-aggregator-core/src/models.rs
+  s_e9bf70077478af::t_e8bc03135cc2ac 90-119
+  s_e9bf70077478af::t_ac86967d34529b 73-83
+  s_e9bf70077478af::t_e4c35fbf5b36a9 144-145
+crates/stream-aggregator-store/src/schema.rs
+  s_e9bf70077478af::t_bba3fbdd35eeeb 33-34
+crates/providers/stream-aggregator-provider-angelthump/src/client.rs
+  s_e9bf70077478af::t_0c96f499d7e03c 120-124,131-132
+  s_e9bf70077478af::t_9b3c49345e929f 4
+docs/API.md
+  s_e9bf70077478af::t_c079514bafc346 59-60
+  s_e9bf70077478af::t_2eb18933cc18ac 35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "eed8d05d03ac51ed84923febf6e5d0a9b09b5e2f",
+  "prompts": {},
+  "sessions": {
+    "s_e9bf70077478af": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4afb7a9d-618c-4258-9598-3a6d30d3034f",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thomas Lekanger <thomas.lekanger@hotmail.com>"
+    }
+  }
+}
