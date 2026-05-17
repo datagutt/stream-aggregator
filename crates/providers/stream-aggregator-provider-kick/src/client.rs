@@ -143,6 +143,102 @@ impl KickProvider {
 
         Ok(channel)
     }
+
+    /// Fetch a single livestreams discovery page.
+    ///
+    /// `tag` is passed as a separate argument (not read from `filters`) because
+    /// the Kick API only supports one `tag` per request, so the caller fans out
+    /// across the filter's tag list.
+    async fn fetch_livestreams_page(
+        &self,
+        filters: &DiscoveryFilters,
+        limit: usize,
+        tag: Option<&str>,
+    ) -> Result<Vec<DiscoveredStreamer>, ProviderError> {
+        // `sort` is required by the Kick API.
+        let mut params = vec![
+            ("limit", limit.to_string()),
+            ("sort", "viewer_count_desc".to_string()),
+        ];
+
+        for language in &filters.languages {
+            params.push(("language", language.clone()));
+        }
+
+        if let Some(category) = filters.categories.first() {
+            params.push(("category_id", category.clone()));
+        }
+
+        if let Some(t) = tag {
+            params.push(("tag", t.to_string()));
+        }
+
+        let url = "https://web.kick.com/api/v1/livestreams";
+
+        debug!(?params, "Fetching Kick livestreams page");
+
+        let response = self
+            .client
+            .get(url)
+            .query(&params)
+            .send()
+            .await
+            .map_err(|e| ProviderError::HttpError(format!("Discovery request failed: {}", e)))?;
+
+        let status = response.status();
+
+        if status == 403 || status == 429 {
+            warn!(
+                "Kick discovery API returned {}, possible rate limit",
+                status
+            );
+            return Err(ProviderError::RateLimitExceeded);
+        }
+
+        if !status.is_success() {
+            let body = response.text().await.unwrap_or_default();
+            error!("Kick discovery API error {}: {}", status, body);
+            return Err(ProviderError::HttpError(format!(
+                "Kick discovery API error {}: {}",
+                status, body
+            )));
+        }
+
+        let livestreams_response: KickLivestreamsResponse = response.json().await.map_err(|e| {
+            ProviderError::ParseError(format!("Failed to parse Kick discovery response: {}", e))
+        })?;
+
+        let discovered = livestreams_response
+            .data
+            .livestreams
+            .into_iter()
+            .filter(|s| {
+                if let Some(min) = filters.min_viewers {
+                    if s.viewer_count < min {
+                        return false;
+                    }
+                }
+                if let Some(max) = filters.max_viewers {
+                    if s.viewer_count > max {
+                        return false;
+                    }
+                }
+                true
+            })
+            .map(|s| DiscoveredStreamer {
+                platform: "kick".to_string(),
+                user_id: s.channel.slug.clone(),
+                display_name: s.channel.username,
+                is_live: true,
+                viewer_count: Some(s.viewer_count),
+                category: Some(s.category.name),
+                tags: s.tags,
+                language: Some(s.language),
+            })
+            .collect();
+
+        Ok(discovered)
+    }
 }
 
 #[async_trait]
@@ -235,113 +331,32 @@ impl PlatformProvider for KickProvider {
 
         let limit = filters.limit.unwrap_or(24).min(100);
 
-        // Build query parameters
-        // Note: sort parameter is REQUIRED by the Kick API
-        let mut params = vec![
-            ("limit", limit.to_string()),
-            ("sort", "viewer_count_desc".to_string()),
-        ];
+        // Kick's livestreams API only accepts a single `tag` per request.
+        // When the caller passes multiple tags we fan out one fetch per tag
+        // and merge/deduplicate the results, since client-side filtering
+        // against a single-tag page would silently drop matches that live
+        // on a different tag's page.
+        let tag_queries: Vec<Option<&str>> = if filters.tags.is_empty() {
+            vec![None]
+        } else {
+            filters.tags.iter().map(|t| Some(t.as_str())).collect()
+        };
 
-        // Add language filters
-        // API accepts multiple language parameters
-        for language in &filters.languages {
-            params.push(("language", language.clone()));
+        let mut merged: std::collections::HashMap<String, DiscoveredStreamer> =
+            std::collections::HashMap::new();
+
+        for tag in tag_queries {
+            let page = self.fetch_livestreams_page(filters, limit, tag).await?;
+            for streamer in page {
+                merged
+                    .entry(streamer.user_id.clone())
+                    .or_insert(streamer);
+            }
         }
 
-        // Add category filter using category_id
-        // Categories should be numeric IDs (e.g., "15" for Just Chatting, "28" for Slots & Casino)
-        if let Some(category) = filters.categories.first() {
-            params.push(("category_id", category.clone()));
-        }
-
-        // Add tag filter (server-side filtering)
-        // API supports tag parameter for filtering by stream tags
-        // Note: We still do client-side filtering below for multiple tags
-        if let Some(tag) = filters.tags.first() {
-            params.push(("tag", tag.clone()));
-        }
-
-        let url = "https://web.kick.com/api/v1/livestreams";
-
-        debug!(?params, "Fetching Kick livestreams");
-
-        let response = self
-            .client
-            .get(url)
-            .query(&params)
-            .send()
-            .await
-            .map_err(|e| ProviderError::HttpError(format!("Discovery request failed: {}", e)))?;
-
-        let status = response.status();
-
-        if status == 403 || status == 429 {
-            warn!(
-                "Kick discovery API returned {}, possible rate limit",
-                status
-            );
-            return Err(ProviderError::RateLimitExceeded);
-        }
-
-        if !status.is_success() {
-            let body = response.text().await.unwrap_or_default();
-            error!("Kick discovery API error {}: {}", status, body);
-            return Err(ProviderError::HttpError(format!(
-                "Kick discovery API error {}: {}",
-                status, body
-            )));
-        }
-
-        let livestreams_response: KickLivestreamsResponse = response.json().await.map_err(|e| {
-            ProviderError::ParseError(format!("Failed to parse Kick discovery response: {}", e))
-        })?;
-
-        let discovered: Vec<DiscoveredStreamer> = livestreams_response
-            .data
-            .livestreams
-            .into_iter()
-            .filter(|s| {
-                // Filter by minimum viewers
-                if let Some(min) = filters.min_viewers {
-                    if s.viewer_count < min {
-                        return false;
-                    }
-                }
-
-                // Filter by maximum viewers
-                if let Some(max) = filters.max_viewers {
-                    if s.viewer_count > max {
-                        return false;
-                    }
-                }
-
-                // Filter by tags (client-side for multiple tags)
-                // If we specified a tag in the query, the API already filtered
-                // But if there are multiple tags, we need client-side filtering
-                if !filters.tags.is_empty() {
-                    let has_any_tag = filters.tags.iter().any(|filter_tag| {
-                        s.tags.iter().any(|stream_tag| {
-                            stream_tag.to_lowercase() == filter_tag.to_lowercase()
-                        })
-                    });
-                    if !has_any_tag {
-                        return false;
-                    }
-                }
-
-                true
-            })
-            .map(|s| DiscoveredStreamer {
-                platform: "kick".to_string(),
-                user_id: s.channel.slug.clone(),
-                display_name: s.channel.username,
-                is_live: true,
-                viewer_count: Some(s.viewer_count),
-                category: Some(s.category.name),
-                tags: s.tags,
-                language: Some(s.language),
-            })
-            .collect();
+        let mut discovered: Vec<DiscoveredStreamer> = merged.into_values().collect();
+        discovered.sort_by(|a, b| b.viewer_count.cmp(&a.viewer_count));
+        discovered.truncate(limit as usize);
 
         debug!("Discovered {} Kick streamers", discovered.len());
 
