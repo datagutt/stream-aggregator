@@ -190,6 +190,18 @@ curl -H "X-API-Key: secret-key-1" http://localhost:8080/api/v1/streamers
 
 See [docs/API.md](docs/API.md) for complete API documentation.
 
+## Frontend (web/)
+
+A brandable Next.js 16 frontend lives in `web/`. Each "community" is a curated slice of the global stream pool with its own brand and domains (e.g. `livestreamnorge.example.com` resolves to a Norwegian directory).
+
+```bash
+cd web
+bun install
+bun dev
+```
+
+Visit `/admin`, paste a backend API key, create a community, and visit `/c/<slug>`. See [web/README.md](web/README.md) for the full architecture and deployment notes.
+
 ## Documentation
 
 - **[API.md](docs/API.md)** - Complete REST API reference
