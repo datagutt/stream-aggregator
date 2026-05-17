@@ -43,8 +43,6 @@ Key files to reference for API behavior and scraping logic:
   - `youtube.js` - HTML scraping with regex
   - `kick.js` - XSRF tokens, TLS fingerprint spoofing (cycletls)
   - `tiktok.js` - Uses tiktok-live-connector library
-  - `dlive.js` - GraphQL API
-  - `trovo.js` - Two-step lookup (username → channel_id → data)
   - `guac.js`, `angelthump.js`, `robotstreamer.js` - Simple REST APIs
 
 ## Technical Decisions

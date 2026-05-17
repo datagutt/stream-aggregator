@@ -14,8 +14,6 @@ default = [
 	"provider-twitch",
 	"provider-youtube",
 	"provider-kick",
-	"provider-dlive",
-	"provider-trovo",
 	"provider-guac",
 	"provider-angelthump",
 	"provider-robotstreamer",
@@ -25,8 +23,6 @@ default = [
 provider-twitch = ["stream-aggregator-provider-twitch"]
 provider-youtube = ["stream-aggregator-provider-youtube"]
 provider-kick = ["stream-aggregator-provider-kick"]
-provider-dlive = ["stream-aggregator-provider-dlive"]
-provider-trovo = ["stream-aggregator-provider-trovo"]
 provider-guac = ["stream-aggregator-provider-guac"]
 provider-angelthump = ["stream-aggregator-provider-angelthump"]
 provider-robotstreamer = ["stream-aggregator-provider-robotstreamer"]
@@ -48,8 +44,6 @@ stream-aggregator-scheduler = { path = "../stream-aggregator-scheduler" }
 stream-aggregator-provider-twitch = { path = "../providers/stream-aggregator-provider-twitch", optional = true }
 stream-aggregator-provider-youtube = { path = "../providers/stream-aggregator-provider-youtube", optional = true }
 stream-aggregator-provider-kick = { path = "../providers/stream-aggregator-provider-kick", optional = true }
-stream-aggregator-provider-dlive = { path = "../providers/stream-aggregator-provider-dlive", optional = true }
-stream-aggregator-provider-trovo = { path = "../providers/stream-aggregator-provider-trovo", optional = true }
 stream-aggregator-provider-guac = { path = "../providers/stream-aggregator-provider-guac", optional = true }
 stream-aggregator-provider-angelthump = { path = "../providers/stream-aggregator-provider-angelthump", optional = true }
 stream-aggregator-provider-robotstreamer = { path = "../providers/stream-aggregator-provider-robotstreamer", optional = true }

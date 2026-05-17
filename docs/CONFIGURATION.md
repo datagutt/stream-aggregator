@@ -167,13 +167,6 @@ enabled = true  # No credentials needed
 [providers.kick]
 enabled = true  # No credentials needed
 
-[providers.dlive]
-enabled = true  # No credentials needed
-
-[providers.trovo]
-enabled = true
-client_id = ""  # Optional
-
 [providers.guac]
 enabled = true  # No credentials needed
 
@@ -219,9 +212,6 @@ REQUIRE_AUTH_ALL=false
 # Twitch (required)
 TWITCH_CLIENT_ID=your_client_id
 TWITCH_CLIENT_SECRET=your_client_secret
-
-# Trovo (optional)
-TROVO_CLIENT_ID=your_client_id
 ```
 
 ### Docker-Specific

@@ -10,8 +10,6 @@ members = [
     "crates/providers/stream-aggregator-provider-twitch",
     "crates/providers/stream-aggregator-provider-youtube",
     "crates/providers/stream-aggregator-provider-kick",
-    "crates/providers/stream-aggregator-provider-dlive",
-    "crates/providers/stream-aggregator-provider-trovo",
     "crates/providers/stream-aggregator-provider-guac",
     "crates/providers/stream-aggregator-provider-angelthump",
     "crates/providers/stream-aggregator-provider-robotstreamer",

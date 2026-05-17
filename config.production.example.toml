@@ -71,16 +71,6 @@ enabled = true
 # No credentials required
 # Uses browser emulation for Cloudflare bypass
 
-[providers.dlive]
-enabled = true
-# No credentials required
-# Uses GraphQL API
-
-[providers.trovo]
-enabled = true
-# Optional: client_id for higher rate limits
-# TROVO_CLIENT_ID=your_client_id
-
 [providers.guac]
 enabled = true
 # No credentials required

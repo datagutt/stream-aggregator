@@ -100,12 +100,6 @@ pub struct ProvidersConfig {
     pub kick: KickProviderConfig,
 
     #[serde(default)]
-    pub dlive: DLiveProviderConfig,
-
-    #[serde(default)]
-    pub trovo: TrovoProviderConfig,
-
-    #[serde(default)]
     pub guac: GuacProviderConfig,
 
     #[serde(default)]
@@ -146,20 +140,6 @@ pub struct YouTubeProviderConfig {
 /// Kick provider configuration
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct KickProviderConfig {
-    #[serde(default = "default_true")]
-    pub enabled: bool,
-}
-
-/// DLive provider configuration
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct DLiveProviderConfig {
-    #[serde(default = "default_true")]
-    pub enabled: bool,
-}
-
-/// Trovo provider configuration
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct TrovoProviderConfig {
     #[serde(default = "default_true")]
     pub enabled: bool,
 }
@@ -252,8 +232,6 @@ impl AppConfig {
                 },
                 youtube: YouTubeProviderConfig::default(),
                 kick: KickProviderConfig::default(),
-                dlive: DLiveProviderConfig::default(),
-                trovo: TrovoProviderConfig::default(),
                 guac: GuacProviderConfig::default(),
                 angelthump: AngelThumpProviderConfig::default(),
                 robotstreamer: RobotStreamerProviderConfig::default(),

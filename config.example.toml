@@ -44,13 +44,6 @@ enabled = true
 [providers.kick]
 enabled = true
 
-[providers.dlive]
-enabled = true
-
-[providers.trovo]
-enabled = true
-# client_id = ""
-
 [providers.guac]
 enabled = true
 

@@ -6,7 +6,7 @@ High-performance Rust service for aggregating live stream information across mul
 
 ## Features
 
-- **Multi-platform**: Twitch, YouTube, Kick, DLive, Trovo, TikTok, and more
+- **Multi-platform**: Twitch, YouTube, Kick, TikTok, and more
 - **Fast**: Rust with async/await and efficient scraping  
 - **Persistent**: SQLite with Diesel ORM
 - **Production-ready**: Docker images for amd64/arm64
@@ -86,8 +86,6 @@ curl http://localhost:8080/health
 | Twitch | Yes (OAuth) | https://dev.twitch.tv/console/apps |
 | YouTube | No | HTML scraping |
 | Kick | No | Browser emulation (Cloudflare bypass) |
-| DLive | No | GraphQL API |
-| Trovo | Optional | REST API |
 | TikTok | No | Node.js bridge (included in Docker, auto-detected) |
 | Guac | No | REST API |
 | AngelThump | No | REST API |

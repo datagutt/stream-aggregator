@@ -259,12 +259,6 @@ enabled = true
 [providers.kick]
 enabled = true
 
-[providers.dlive]
-enabled = true
-
-[providers.trovo]
-enabled = true
-
 [providers.guac]
 enabled = true
 
@@ -677,7 +671,7 @@ For massive scale (10,000+ streamers), horizontal scaling options:
 
 2. **Sharding by platform**
    - Instance 1: Twitch + YouTube
-   - Instance 2: Kick + DLive
+   - Instance 2: Kick + TikTok
    - Aggregate results via API gateway
 
 ---

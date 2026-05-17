@@ -25,8 +25,6 @@ stream-aggregator/
 │       ├── stream-aggregator-provider-youtube/
 │       ├── stream-aggregator-provider-kick/
 │       ├── stream-aggregator-provider-tiktok/
-│       ├── stream-aggregator-provider-dlive/
-│       ├── stream-aggregator-provider-trovo/
 │       ├── stream-aggregator-provider-guac/
 │       ├── stream-aggregator-provider-angelthump/
 │       └── stream-aggregator-provider-robotstreamer/
@@ -344,8 +342,6 @@ tokio-test = { workspace = true }
 | YouTube | `scraper = "0.18"` for HTML parsing | |
 | Kick | Browser emulation via `wreq-util` | TLS fingerprinting critical |
 | TikTok | `tiktok-live` (internal crate), `prost`, `tokio-tungstenite` | WebSocket-based |
-| DLive | (none - GraphQL) | |
-| Trovo | (none) | |
 | Guac | (none) | |
 | AngelThump | (none) | |
 | RobotStreamer | (none) | HTTP only (not HTTPS) |
@@ -378,8 +374,6 @@ all-providers = [
     "provider-youtube",
     "provider-kick",
     "provider-tiktok",
-    "provider-dlive",
-    "provider-trovo",
     "provider-guac",
     "provider-angelthump",
     "provider-robotstreamer",
@@ -388,8 +382,6 @@ provider-twitch = ["stream-aggregator-provider-twitch"]
 provider-youtube = ["stream-aggregator-provider-youtube"]
 provider-kick = ["stream-aggregator-provider-kick"]
 provider-tiktok = ["stream-aggregator-provider-tiktok"]
-provider-dlive = ["stream-aggregator-provider-dlive"]
-provider-trovo = ["stream-aggregator-provider-trovo"]
 provider-guac = ["stream-aggregator-provider-guac"]
 provider-angelthump = ["stream-aggregator-provider-angelthump"]
 provider-robotstreamer = ["stream-aggregator-provider-robotstreamer"]
@@ -409,8 +401,6 @@ stream-aggregator-provider-twitch = { path = "../providers/stream-aggregator-pro
 stream-aggregator-provider-youtube = { path = "../providers/stream-aggregator-provider-youtube", optional = true }
 stream-aggregator-provider-kick = { path = "../providers/stream-aggregator-provider-kick", optional = true }
 stream-aggregator-provider-tiktok = { path = "../providers/stream-aggregator-provider-tiktok", optional = true }
-stream-aggregator-provider-dlive = { path = "../providers/stream-aggregator-provider-dlive", optional = true }
-stream-aggregator-provider-trovo = { path = "../providers/stream-aggregator-provider-trovo", optional = true }
 stream-aggregator-provider-guac = { path = "../providers/stream-aggregator-provider-guac", optional = true }
 stream-aggregator-provider-angelthump = { path = "../providers/stream-aggregator-provider-angelthump", optional = true }
 stream-aggregator-provider-robotstreamer = { path = "../providers/stream-aggregator-provider-robotstreamer", optional = true }

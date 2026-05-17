@@ -660,142 +660,7 @@ prost-build = "0.12"
 
 ---
 
-### 5. DLive Provider
-
-**Crate**: `stream-aggregator-provider-dlive`
-
-#### Features
-
-- GraphQL API
-- Simple authentication-free access
-
-#### API Endpoint
-
-- `POST https://graphigo.prd.dlive.tv/` - GraphQL endpoint
-
-#### Implementation Notes
-
-```rust
-pub struct DLiveProvider {
-    client: reqwest::Client,
-}
-
-impl DLiveProvider {
-    async fn fetch_stream(&self, username: &str) -> Result<StreamInfo, ProviderError> {
-        let query = r#"
-            query($name: String!) {
-                userByDisplayName(displayname: $name) {
-                    displayname
-                    avatar
-                    livestream {
-                        title
-                        watchingCount
-                        view
-                    }
-                }
-            }
-        "#;
-        
-        let response = self.client
-            .post("https://graphigo.prd.dlive.tv/")
-            .json(&serde_json::json!({
-                "query": query,
-                "variables": { "name": username }
-            }))
-            .send()
-            .await?;
-            
-        let data: DLiveResponse = response.json().await?;
-        let user = data.data.user_by_display_name
-            .ok_or(ProviderError::UserNotFound)?;
-            
-        Ok(StreamInfo {
-            platform: "dlive".to_string(),
-            user_id: username.to_string(),
-            display_name: user.displayname,
-            avatar_url: Some(user.avatar),
-            is_live: user.livestream.is_some(),
-            viewer_count: user.livestream.as_ref().map(|l| l.watching_count),
-            title: user.livestream.as_ref().map(|l| l.title.clone()),
-            // ...
-        })
-    }
-}
-```
-
----
-
-### 6. Trovo Provider
-
-**Crate**: `stream-aggregator-provider-trovo`
-
-#### Features
-
-- Official API with Client ID authentication
-- Two-step lookup (username -> channel_id -> channel data)
-- Rate limit: 120 requests/minute
-
-#### API Endpoints
-
-1. `POST /openplatform/getusers` - Get channel_id from username
-   - Body: `{"user": ["username"]}`
-   - Returns: `{"users": [{"channel_id": "...", "username": "...", ...}]}`
-
-2. `POST /openplatform/channels/id` - Get channel data by channel_id
-   - Body: `{"channel_id": "..."}`
-   - Returns: Channel info with `is_live`, `live_title`, `current_viewers`, etc.
-
-#### Implementation Notes
-
-```rust
-pub struct TrovoProvider {
-    client: reqwest::Client,
-    client_id: String,
-    /// Cache channel IDs to avoid redundant lookups
-    channel_id_cache: Arc<RwLock<HashMap<String, String>>>,
-}
-
-impl TrovoProvider {
-    async fn get_channel_id(&self, username: &str) -> Result<String, ProviderError> {
-        // Check cache first
-        if let Some(id) = self.channel_id_cache.read().await.get(username) {
-            return Ok(id.clone());
-        }
-        
-        let response = self.client
-            .post("https://open-api.trovo.live/openplatform/getusers")
-            .header("Client-ID", &self.client_id)
-            .json(&serde_json::json!({ "user": [username] }))
-            .send()
-            .await?;
-            
-        let data: TrovoUsersResponse = response.json().await?;
-        let channel_id = data.users.first()
-            .ok_or(ProviderError::UserNotFound)?
-            .channel_id.clone();
-            
-        // Cache for future use
-        self.channel_id_cache.write().await.insert(username.to_string(), channel_id.clone());
-        
-        Ok(channel_id)
-    }
-    
-    async fn fetch_channel_by_id(&self, channel_id: &str) -> Result<ChannelData, ProviderError> {
-        let response = self.client
-            .post("https://open-api.trovo.live/openplatform/channels/id")
-            .header("Client-ID", &self.client_id)
-            .json(&serde_json::json!({ "channel_id": channel_id }))
-            .send()
-            .await?;
-            
-        response.json().await.map_err(Into::into)
-    }
-}
-```
-
----
-
-### 7. Guac Provider
+### 5. Guac Provider
 
 **Crate**: `stream-aggregator-provider-guac`
 
@@ -847,7 +712,7 @@ impl GuacProvider {
 }
 ```
 
-### 8. AngelThump Provider
+### 6. AngelThump Provider
 
 **Crate**: `stream-aggregator-provider-angelthump`
 
@@ -883,7 +748,7 @@ impl AngelThumpProvider {
 
 Both endpoints use query parameters and return arrays. Stream endpoint returns empty array if offline.
 
-### 9. RobotStreamer Provider
+### 7. RobotStreamer Provider
 
 **Crate**: `stream-aggregator-provider-robotstreamer`
 
@@ -1187,8 +1052,6 @@ We use **wreq** as the HTTP client for **all platforms**. It's a fork of `reqwes
 | YouTube | HTTPS | Optional | HTML scraping / Data API |
 | **Kick** | HTTPS | **Required** | Cloudflare anti-bot protection |
 | TikTok | HTTPS + WebSocket | Optional | Room discovery + Protobuf WebSocket |
-| DLive | HTTPS | Optional | GraphQL API |
-| Trovo | HTTPS | Optional | Standard REST API |
 | Guac | HTTPS | Optional | Standard REST API |
 | AngelThump | HTTPS | Optional | Standard REST API |
 | RobotStreamer | HTTP | N/A | HTTP only (not HTTPS) |

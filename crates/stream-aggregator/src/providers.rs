@@ -18,12 +18,6 @@ use stream_aggregator_provider_youtube::{YouTubeConfig, YouTubeProvider};
 #[cfg(feature = "provider-kick")]
 use stream_aggregator_provider_kick::{KickConfig, KickProvider};
 
-#[cfg(feature = "provider-dlive")]
-use stream_aggregator_provider_dlive::{DLiveConfig, DLiveProvider};
-
-#[cfg(feature = "provider-trovo")]
-use stream_aggregator_provider_trovo::{TrovoConfig, TrovoProvider};
-
 #[cfg(feature = "provider-guac")]
 use stream_aggregator_provider_guac::{GuacConfig, GuacProvider};
 
@@ -131,28 +125,6 @@ impl ProviderRegistry {
                 init: |_cfg: crate::config::KickProviderConfig| async {
                     let kick_config = KickConfig::default();
                     KickProvider::new(kick_config).map_err(|e| anyhow::anyhow!("Failed to create Kick provider: {}", e))
-                }
-            },
-            {
-                feature: "provider-dlive",
-                provider: DLiveProvider,
-                config_type: crate::config::DLiveProviderConfig,
-                config_field: dlive,
-                name: "DLive",
-                init: |_cfg: crate::config::DLiveProviderConfig| async {
-                    let dlive_config = DLiveConfig::default();
-                    Ok::<DLiveProvider, anyhow::Error>(DLiveProvider::new(dlive_config))
-                }
-            },
-            {
-                feature: "provider-trovo",
-                provider: TrovoProvider,
-                config_type: crate::config::TrovoProviderConfig,
-                config_field: trovo,
-                name: "Trovo",
-                init: |_cfg: crate::config::TrovoProviderConfig| async {
-                    let trovo_config = TrovoConfig::default();
-                    Ok::<TrovoProvider, anyhow::Error>(TrovoProvider::new(trovo_config))
                 }
             },
             {
