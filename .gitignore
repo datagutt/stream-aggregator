@@ -23,3 +23,10 @@ node_modules/
 stream_aggregator.db
 
 lsnd/
+
+# Next.js frontend (web/)
+web/.next/
+web/.turbo/
+web/.vercel/
+web/.env*.local
+web/out/

@@ -2,14 +2,14 @@
 
 ## Stack
 
-- Next.js 15 (app router, React 19)
+- Next.js 16 (app router, Turbopack stable, React 19)
 - Tailwind CSS v4 (CSS-first, no plugin config)
-- HeroUI v3 beta (`@heroui/react@beta`, `@heroui/styles@beta`) — built on Tailwind v4 + React Aria
+- HeroUI v3 (`@heroui/react@^3`, `@heroui/styles@^3`) — built on Tailwind v4 + React Aria. v3 needs no provider component.
 - TypeScript strict
 - Bun as package manager and runtime
-- `next-themes` for theme switching (per-community default theme, user override allowed)
+- `next-themes` for theme switching (global cookie, `attribute="class"`, dark default)
 
-No Tailwind plugin for HeroUI v3. Styles are imported via CSS: `@import "tailwindcss"; @import "@heroui/styles";`. Theme tokens are CSS variables on `:root`, overridden per community at the layout level.
+No Tailwind plugin for HeroUI v3. Styles are imported via CSS: `@import "tailwindcss"; @import "@heroui/styles";`. Theme tokens are CSS variables on `:root`, with the `.light` class flipping the surface tokens. Community accent is injected as inline style on `<html>` by the community layout.
 
 ## Theme posture
 
