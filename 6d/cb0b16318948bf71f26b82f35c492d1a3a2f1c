@@ -1,0 +1,37 @@
+web/components/filter-bar.tsx
+  s_268a6765f9af95::t_01efb737e17478 93-103,105-112,114-118
+  s_268a6765f9af95::t_74035fb65e2863 104
+  s_268a6765f9af95::t_a789458586dd19 3,5,67,70-72
+  s_268a6765f9af95::t_bdf3275fe9b984 4,6-10,12,14-15,18-22,25-26,30-39,42-66,68-69,73-92,113
+  s_268a6765f9af95::t_8632e784695dac 11,13
+  s_268a6765f9af95::t_6a9183bcbf692b 1-2,16-17,23-24,27-29,40-41,119-122
+web/package.json
+  s_268a6765f9af95::t_d8bd8c3adde69c 17
+web/bun.lock
+  ai_agent 14,186-187,294
+.gitignore
+  s_268a6765f9af95::t_d3361a7778b956 24-25
+web/lib/community-search-params.ts
+  s_268a6765f9af95::t_bc7367139a2984 1-27
+web/app/c/[slug]/page.tsx
+  s_268a6765f9af95::t_70762ac4b69899 4,9,17-22,29,31-32,65-67,69-70,93
+  s_268a6765f9af95::t_7d21a254ef40f0 2,7-8,13,16,27-28,33-48,52-53,55-57,64,68,71-79,82,86-92
+web/app/providers.tsx
+  s_268a6765f9af95::t_eb0320950f9596 4,8-14,24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "6dcb0b16318948bf71f26b82f35c492d1a3a2f1c",
+  "prompts": {},
+  "sessions": {
+    "s_268a6765f9af95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2acb2e8f-01ef-4732-8915-2195ceb85313",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thomas Lekanger <thomas.lekanger@hotmail.com>"
+    }
+  }
+}
