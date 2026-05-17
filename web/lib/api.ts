@@ -38,6 +38,9 @@ export interface FetchOpts {
   signal?: AbortSignal;
   /** Tags for on-demand revalidation. */
   tags?: string[];
+  /** Optional API key. When provided, sent as X-API-Key. Used by admin
+      server actions that resolved the key from the httpOnly cookie. */
+  apiKey?: string;
 }
 
 export interface AuthedOpts extends FetchOpts {
@@ -57,8 +60,10 @@ async function request<T>(
 ): Promise<T> {
   const { revalidate, noStore, tags, ...rest } = init;
   const url = `${API_URL}${path}`;
+  // noStore wins: Next.js complains if both `cache: no-store` and
+  // `next.revalidate` are present.
   const next: { revalidate?: number | false; tags?: string[] } = {};
-  if (typeof revalidate === "number") next.revalidate = revalidate;
+  if (!noStore && typeof revalidate === "number") next.revalidate = revalidate;
   if (tags && tags.length) next.tags = tags;
 
   const res = await fetch(url, {
@@ -204,6 +209,8 @@ export async function listStreamers(opts: FetchOpts = {}): Promise<TrackedStream
     method: "GET",
     revalidate: opts.revalidate ?? 30,
     signal: opts.signal,
+    headers: opts.apiKey ? authHeaders(opts.apiKey) : undefined,
+    noStore: opts.noStore,
   });
   return raw.data.map(streamerFromRaw);
 }
