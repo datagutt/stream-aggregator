@@ -1,0 +1,68 @@
+web/app/c/[slug]/all/page.tsx
+  s_268a6765f9af95::t_f3e1f928bcd729 1-92
+crates/stream-aggregator-store/migrations/2026051713010000_add_login_to_streams/up.sql
+  s_268a6765f9af95::t_b44fa98fe119f7 1-4
+crates/stream-aggregator-store/migrations/2026051713010000_add_login_to_streams/down.sql
+  s_268a6765f9af95::t_fac0c5d41546c0 1
+crates/stream-aggregator-store/src/schema.rs
+  s_268a6765f9af95::t_59648af0493b1c 62
+web/lib/api-types.ts
+  s_268a6765f9af95::t_eeaa2f42d409e5 42
+  s_268a6765f9af95::t_48bbef2dd8f763 19-22
+crates/providers/stream-aggregator-provider-angelthump/src/client.rs
+  s_268a6765f9af95::t_c199a975ce296b 127
+web/bun.lock
+  ai_agent 12,289
+web/lib/format.ts
+  s_268a6765f9af95::t_c55a5fbe87a6f9 57-69,72,74-76,78,80,82,84,86,88
+web/app/globals.css
+  s_268a6765f9af95::t_0902bfbd7a177b 98-158
+web/components/stream-card.tsx
+  s_268a6765f9af95::t_bbaedc8ee1ab85 103
+  s_268a6765f9af95::t_b8ca1a6f3ea915 1,13-37,39
+crates/providers/stream-aggregator-provider-tiktok/src/client.rs
+  s_268a6765f9af95::t_3751d8eccc8ace 309-310
+crates/stream-aggregator-store/src/models.rs
+  s_268a6765f9af95::t_c33e2e1e2974c7 39,61
+  s_268a6765f9af95::t_34be0596b0b3c6 91
+  s_268a6765f9af95::t_c3c9a08add357b 122
+web/package.json
+  s_268a6765f9af95::t_b2a2534c256621 15
+web/app/page.tsx
+  s_268a6765f9af95::t_3ee9d1adcea807 1-5,7,9-14,16-19,21-30,32-86
+  s_268a6765f9af95::t_eee78b887f9d2b 6
+  s_268a6765f9af95::t_90a881d1988a75 20
+crates/providers/stream-aggregator-provider-youtube/src/scraper.rs
+  s_268a6765f9af95::t_b8b6c44cf543a9 167-168,170
+crates/providers/stream-aggregator-provider-robotstreamer/src/client.rs
+  s_268a6765f9af95::t_bbbead21b6289b 97-98
+web/app/c/[slug]/about/page.tsx
+  s_268a6765f9af95::t_cfe3e4d949c769 1-39
+crates/providers/stream-aggregator-provider-twitch/src/client.rs
+  s_268a6765f9af95::t_8047a76ec93337 234,455,480,507,533
+web/lib/api.ts
+  s_268a6765f9af95::t_ee8668300069a6 135
+crates/providers/stream-aggregator-provider-kick/src/client.rs
+  s_268a6765f9af95::t_d801bcaa17e9ff 267-268
+crates/stream-aggregator-core/src/models.rs
+  s_268a6765f9af95::t_ef29322b6e9e7f 40-42,45-53
+  s_268a6765f9af95::t_7b2469a430c287 144
+crates/providers/stream-aggregator-provider-guac/src/client.rs
+  s_268a6765f9af95::t_12bb98892d35e5 83-84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "ccb58d14f1b82ea70dac1213cd626d11b2fdc70e",
+  "prompts": {},
+  "sessions": {
+    "s_268a6765f9af95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2acb2e8f-01ef-4732-8915-2195ceb85313",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thomas Lekanger <thomas.lekanger@hotmail.com>"
+    }
+  }
+}
