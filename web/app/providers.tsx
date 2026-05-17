@@ -1,12 +1,17 @@
 "use client";
 
 import { ThemeProvider } from "next-themes";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 import type { ReactNode } from "react";
 
 /**
- * Client-side providers wrapper. next-themes drives the dark/light class on
- * <html>. HeroUI v3 needs no provider. Brand tokens are injected by the
- * community layout as inline styles on <html>.
+ * Client-side providers wrapper.
+ *
+ * - next-themes drives the dark/light class on <html>.
+ * - NuqsAdapter wires URL query state for client components.
+ * - HeroUI v3 needs no provider.
+ *
+ * Brand tokens are injected by the community layout as inline styles.
  */
 export function Providers({ children }: { children: ReactNode }) {
   return (
@@ -16,7 +21,7 @@ export function Providers({ children }: { children: ReactNode }) {
       enableSystem={false}
       storageKey="theme"
     >
-      {children}
+      <NuqsAdapter>{children}</NuqsAdapter>
     </ThemeProvider>
   );
 }
