@@ -428,6 +428,79 @@ Manually trigger a discovery rule.
 
 ---
 
+### Communities
+
+Communities are brandable directory tenants. Each one defines a brand (name,
+accent, theme, logo) and a filter recipe (`CommunityFilter`) that selects a
+slice of the global stream pool. Hostnames are tracked separately in
+`community_domains` and exposed back via the `domains` array on the
+`Community` payload.
+
+Reads are public. Writes (POST, PUT, DELETE) require the standard API key
+when authentication is enabled.
+
+#### GET /communities
+
+```json
+{
+  "data": [
+    {
+      "slug": "livestreamnorge",
+      "name": "LiveStreamNorge",
+      "tagline": "Norske strømmere live nå",
+      "accent": "0.58 0.20 250",
+      "accent_contrast": null,
+      "logo_url": null,
+      "default_theme": "dark",
+      "domains": ["livestreamnorge.example.com", "lsn.example.com"],
+      "filter": {
+        "platforms": [],
+        "languages": ["no"],
+        "categories": [],
+        "tags": [],
+        "groups": [],
+        "labels": {},
+        "min_viewers": null
+      },
+      "about_md": null,
+      "created_at": "2026-05-17T14:00:00Z",
+      "updated_at": "2026-05-17T14:00:00Z"
+    }
+  ]
+}
+```
+
+#### GET /communities/{slug}
+
+Returns one community or `404`.
+
+#### GET /communities/by-domain/{host}
+
+Resolves a hostname to its owning community (used by the Next.js middleware on
+every request, cached client-side for 60s). `404` when no mapping exists.
+
+#### POST /communities
+
+Create. Requires authentication when enabled.
+
+Request body matches the `Community` response shape minus `created_at` and
+`updated_at` (server stamps them). `domains` defaults to `[]`. A `409`-style
+error returns when a slug already exists or a domain is claimed by another
+community.
+
+#### PUT /communities/{slug}
+
+Replace. The `slug` in the path is authoritative (any `slug` field in the body
+is ignored). The `domains` array replaces the community's full domain set
+atomically. Returns the updated community.
+
+#### DELETE /communities/{slug}
+
+Remove. `204 No Content` on success, `404` when missing. The `community_domains`
+foreign key cascades, so domain mappings are cleaned automatically.
+
+---
+
 ### Platforms
 
 #### GET /platforms

@@ -2,7 +2,7 @@
 
 use axum::{
     middleware,
-    routing::{delete, get, post},
+    routing::{delete, get},
     Router,
 };
 use std::collections::HashMap;
@@ -49,6 +49,19 @@ pub fn create_router_with_auth(
         )
         // Platforms endpoint (public by default)
         .route("/api/v1/platforms", get(list_platforms))
+        // Communities (reads public, writes require auth)
+        .route(
+            "/api/v1/communities",
+            get(list_communities).post(create_community),
+        )
+        .route(
+            "/api/v1/communities/by-domain/{host}",
+            get(get_community_by_domain),
+        )
+        .route(
+            "/api/v1/communities/{slug}",
+            get(get_community).put(update_community).delete(delete_community),
+        )
         .with_state(state)
         // Apply authentication middleware
         .layer(middleware::from_fn_with_state(auth_config, auth_middleware))

@@ -285,3 +285,132 @@ pub struct PlatformInfo {
     pub base_url: String,
     pub supports_discovery: bool,
 }
+
+// ===== Communities =====
+
+/// Body for POST /communities and PUT /communities/{slug}
+#[derive(Debug, Deserialize)]
+pub struct UpsertCommunityRequest {
+    pub slug: String,
+    pub name: String,
+    #[serde(default)]
+    pub tagline: Option<String>,
+    pub accent: String,
+    #[serde(default)]
+    pub accent_contrast: Option<String>,
+    #[serde(default)]
+    pub logo_url: Option<String>,
+    #[serde(default = "default_theme_mode")]
+    pub default_theme: ThemeMode,
+    #[serde(default)]
+    pub domains: Vec<String>,
+    #[serde(default)]
+    pub filter: CommunityFilter,
+    #[serde(default)]
+    pub about_md: Option<String>,
+}
+
+fn default_theme_mode() -> ThemeMode {
+    ThemeMode::Dark
+}
+
+impl UpsertCommunityRequest {
+    fn into_community(self, prior: Option<&Community>) -> Community {
+        let now = chrono::Utc::now();
+        Community {
+            slug: self.slug,
+            name: self.name,
+            tagline: self.tagline,
+            accent: self.accent,
+            accent_contrast: self.accent_contrast,
+            logo_url: self.logo_url,
+            default_theme: self.default_theme,
+            domains: self.domains,
+            filter: self.filter,
+            about_md: self.about_md,
+            created_at: prior.map(|p| p.created_at).unwrap_or(now),
+            updated_at: now,
+        }
+    }
+}
+
+/// GET /api/v1/communities
+pub async fn list_communities(
+    State(state): State<AppState>,
+) -> ApiResult<Json<ApiResponse<Vec<Community>>>> {
+    let items = state.store.list_communities().await?;
+    Ok(Json(ApiResponse::new(items)))
+}
+
+/// GET /api/v1/communities/{slug}
+pub async fn get_community(
+    State(state): State<AppState>,
+    Path(slug): Path<String>,
+) -> ApiResult<Json<ApiResponse<Community>>> {
+    let community = state
+        .store
+        .get_community(&slug)
+        .await?
+        .ok_or(ApiErrorResponse(ApiError::NotFound))?;
+    Ok(Json(ApiResponse::new(community)))
+}
+
+/// GET /api/v1/communities/by-domain/{host}
+pub async fn get_community_by_domain(
+    State(state): State<AppState>,
+    Path(host): Path<String>,
+) -> ApiResult<Json<ApiResponse<Community>>> {
+    let community = state
+        .store
+        .get_community_by_domain(&host)
+        .await?
+        .ok_or(ApiErrorResponse(ApiError::NotFound))?;
+    Ok(Json(ApiResponse::new(community)))
+}
+
+/// POST /api/v1/communities
+pub async fn create_community(
+    State(state): State<AppState>,
+    Json(req): Json<UpsertCommunityRequest>,
+) -> ApiResult<(StatusCode, Json<ApiResponse<Community>>)> {
+    if state.store.get_community(&req.slug).await?.is_some() {
+        return Err(ApiErrorResponse(ApiError::BadRequest(format!(
+            "community '{}' already exists",
+            req.slug
+        ))));
+    }
+    let community = req.into_community(None);
+    let saved = state.store.upsert_community(&community).await?;
+    Ok((StatusCode::CREATED, Json(ApiResponse::new(saved))))
+}
+
+/// PUT /api/v1/communities/{slug}
+pub async fn update_community(
+    State(state): State<AppState>,
+    Path(slug): Path<String>,
+    Json(mut req): Json<UpsertCommunityRequest>,
+) -> ApiResult<Json<ApiResponse<Community>>> {
+    let prior = state
+        .store
+        .get_community(&slug)
+        .await?
+        .ok_or(ApiErrorResponse(ApiError::NotFound))?;
+    // The slug in the path is authoritative.
+    req.slug = slug;
+    let community = req.into_community(Some(&prior));
+    let saved = state.store.upsert_community(&community).await?;
+    Ok(Json(ApiResponse::new(saved)))
+}
+
+/// DELETE /api/v1/communities/{slug}
+pub async fn delete_community(
+    State(state): State<AppState>,
+    Path(slug): Path<String>,
+) -> ApiResult<StatusCode> {
+    let removed = state.store.delete_community(&slug).await?;
+    if removed {
+        Ok(StatusCode::NO_CONTENT)
+    } else {
+        Err(ApiErrorResponse(ApiError::NotFound))
+    }
+}

@@ -108,6 +108,7 @@ fn requires_auth(method: &Method, path: &str, config: &AuthConfig) -> bool {
             "/api/v1/platforms",
             "/api/v1/stats",
             "/api/v1/groups",
+            "/api/v1/communities",
         ];
 
         if read_only_prefixes
