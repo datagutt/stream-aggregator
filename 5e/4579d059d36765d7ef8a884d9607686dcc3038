@@ -1,0 +1,21 @@
+crates/providers/stream-aggregator-provider-kick/src/client.rs
+  s_39b9cd19a34298::t_25ce27dab13e20 334-354,357-359
+  s_39b9cd19a34298::t_7d7e0b548f525c 155
+  s_39b9cd19a34298::t_f00ae8fa40a2f8 146-154,156-241
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "5e4579d059d36765d7ef8a884d9607686dcc3038",
+  "prompts": {},
+  "sessions": {
+    "s_39b9cd19a34298": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b3f9c418-cfc0-41c4-9ec6-e5a39864e903",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thomas Lekanger <thomas.lekanger@hotmail.com>"
+    }
+  }
+}
