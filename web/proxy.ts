@@ -3,8 +3,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getCommunityByDomainRaw } from "@/lib/api";
 
 /**
- * Domain-based routing. Resolved hosts get rewritten to /c/[slug] so the
- * URL stays clean. Unknown hosts go to /_not-configured (fail-closed).
+ * Domain-based routing — Next.js 16 "proxy" file convention (renamed from
+ * middleware in v16). Resolved hosts get rewritten to /c/[slug] so the URL
+ * stays clean. Unknown hosts go to /_not-configured (fail-closed).
  *
  * Local dev (localhost, *.local, 127.*) falls through to path-based
  * routes so developers can navigate without configuring DNS or domains.
@@ -49,7 +50,7 @@ async function lookupSlug(host: string): Promise<string | null> {
   }
 }
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const host = req.headers.get("host")?.split(":")[0]?.toLowerCase() ?? "";
   const url = req.nextUrl;
 
