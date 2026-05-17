@@ -1,0 +1,28 @@
+crates/stream-aggregator-store/migrations/2026051713000100_create_community_domains/down.sql
+  s_268a6765f9af95::t_9ed87c6f685d55 1-2
+crates/stream-aggregator-store/src/schema.rs
+  s_268a6765f9af95::t_f00b4ed62b9b99 4-28
+  s_268a6765f9af95::t_4bb103f17fe3a2 79-85
+crates/stream-aggregator-store/migrations/2026051713000100_create_community_domains/up.sql
+  s_268a6765f9af95::t_5590b048303d26 1-10
+crates/stream-aggregator-store/migrations/2026051713000000_create_communities/up.sql
+  s_268a6765f9af95::t_08ea1fe9a2c65c 1-18
+crates/stream-aggregator-store/migrations/2026051713000000_create_communities/down.sql
+  s_268a6765f9af95::t_b46b9ee23b8797 1-2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "e662e66f83f3e24b3d5ee51916c2d635b05bc69f",
+  "prompts": {},
+  "sessions": {
+    "s_268a6765f9af95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2acb2e8f-01ef-4732-8915-2195ceb85313",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thomas Lekanger <thomas.lekanger@hotmail.com>"
+    }
+  }
+}
