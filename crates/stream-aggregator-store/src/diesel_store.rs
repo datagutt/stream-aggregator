@@ -300,20 +300,20 @@ impl StreamStore for DieselStore {
                 ($diesel_query:expr) => {{
                     let mut dq = $diesel_query;
 
-                    if let Some(ref platform) = query.platform {
-                        dq = dq.filter(streams::platform.eq(platform.clone()));
+                    if !query.platforms.is_empty() {
+                        dq = dq.filter(streams::platform.eq_any(query.platforms.clone()));
                     }
 
                     if let Some(is_live) = query.is_live {
                         dq = dq.filter(streams::is_live.eq(is_live));
                     }
 
-                    if let Some(ref language) = query.language {
-                        dq = dq.filter(streams::language.eq(language.clone()));
+                    if !query.languages.is_empty() {
+                        dq = dq.filter(streams::language.eq_any(query.languages.clone()));
                     }
 
-                    if let Some(ref category) = query.category {
-                        dq = dq.filter(streams::category.eq(category.clone()));
+                    if !query.categories.is_empty() {
+                        dq = dq.filter(streams::category.eq_any(query.categories.clone()));
                     }
 
                     if let Some(min_viewers) = query.min_viewers {
@@ -333,9 +333,27 @@ impl StreamStore for DieselStore {
                         );
                     }
 
-                    if let Some(ref tag) = query.tag {
-                        let pattern = format!("%\"{}%", tag);
-                        dq = dq.filter(streams::tags.like(pattern));
+                    // Tags column is a JSON string; match if it contains any of the requested
+                    // tags. SQLite has no JSON array predicate exposed via diesel here, so we
+                    // OR a LIKE per tag. Cheap because the tag list is short and the tag
+                    // column already has a string-pattern index pattern via LIKE.
+                    if !query.tags.is_empty() {
+                        use diesel::BoolExpressionMethods;
+                        let mut iter = query.tags.iter();
+                        let first = iter.next().unwrap();
+                        let mut tag_predicate: Box<
+                            dyn diesel::BoxableExpression<
+                                streams::table,
+                                diesel::sqlite::Sqlite,
+                                SqlType = diesel::sql_types::Bool,
+                            >,
+                        > = Box::new(streams::tags.like(format!("%\"{}%", first)));
+                        for t in iter {
+                            tag_predicate = Box::new(
+                                tag_predicate.or(streams::tags.like(format!("%\"{}%", t))),
+                            );
+                        }
+                        dq = dq.filter(tag_predicate);
                     }
 
                     dq
@@ -825,6 +843,59 @@ mod tests {
             .await
             .unwrap();
         assert!(deleted.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_diesel_multi_value_filters() {
+        let store = DieselStore::memory().unwrap();
+
+        let mut a = StreamInfo::new("twitch", "a", "Alice");
+        a.language = Some("no".into());
+        a.category = Some("Just Chatting".into());
+        a.tags = vec!["nordic".into()];
+        a.is_live = true;
+
+        let mut b = StreamInfo::new("youtube", "b", "Bob");
+        b.language = Some("sv".into());
+        b.category = Some("Music".into());
+        b.tags = vec!["acoustic".into(), "nordic".into()];
+        b.is_live = true;
+
+        let mut c = StreamInfo::new("kick", "c", "Cara");
+        c.language = Some("en".into());
+        c.tags = vec!["fps".into()];
+        c.is_live = true;
+
+        for s in [&a, &b, &c] {
+            store.upsert_stream(s).await.unwrap();
+        }
+
+        let page = store
+            .get_streams(&StreamQuery {
+                languages: vec!["no".into(), "sv".into()],
+                ..Default::default()
+            })
+            .await
+            .unwrap();
+        assert_eq!(page.total, 2);
+
+        let page = store
+            .get_streams(&StreamQuery {
+                platforms: vec!["twitch".into(), "kick".into()],
+                ..Default::default()
+            })
+            .await
+            .unwrap();
+        assert_eq!(page.total, 2);
+
+        let page = store
+            .get_streams(&StreamQuery {
+                tags: vec!["nordic".into(), "fps".into()],
+                ..Default::default()
+            })
+            .await
+            .unwrap();
+        assert_eq!(page.total, 3);
     }
 
     #[tokio::test]

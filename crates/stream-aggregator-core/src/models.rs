@@ -369,8 +369,10 @@ pub enum HealthStatus {
 /// Query parameters for listing streams
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct StreamQuery {
-    /// Filter by platform
-    pub platform: Option<String>,
+    /// Filter by platforms. Empty vec means "any platform".
+    /// At the HTTP layer this is parsed from a comma-separated list, e.g. `?platform=twitch,youtube`.
+    #[serde(default)]
+    pub platforms: Vec<String>,
 
     /// Filter by live status
     pub is_live: Option<bool>,
@@ -385,14 +387,19 @@ pub struct StreamQuery {
     /// Search in display name and title
     pub search: Option<String>,
 
-    /// Filter by language
-    pub language: Option<String>,
+    /// Filter by languages. Empty vec means "any language".
+    /// At the HTTP layer this is parsed from a comma-separated list, e.g. `?language=no,sv,da`.
+    #[serde(default)]
+    pub languages: Vec<String>,
 
-    /// Filter by category
-    pub category: Option<String>,
+    /// Filter by categories. Empty vec means "any category".
+    #[serde(default)]
+    pub categories: Vec<String>,
 
-    /// Filter by tag
-    pub tag: Option<String>,
+    /// Filter by tags. A stream matches when it contains AT LEAST ONE of these tags.
+    /// Empty vec means "any tag".
+    #[serde(default)]
+    pub tags: Vec<String>,
 
     /// Minimum viewer count
     pub min_viewers: Option<u64>,

@@ -55,19 +55,28 @@ pub struct AppState {
     pub providers: Arc<HashMap<String, Arc<dyn PlatformProvider>>>,
 }
 
-/// Query parameters for GET /streams
+/// Query parameters for GET /streams.
+///
+/// `platform`, `language`, `category`, `tag` accept multi-value arrays via
+/// serde_qs bracket syntax: `?platform[]=twitch&platform[]=youtube` or
+/// `?language[0]=no&language[1]=sv`. A single value also works:
+/// `?platform[]=twitch`. Empty/missing means "any".
 #[derive(Debug, Deserialize)]
 pub struct StreamsQuery {
-    pub platform: Option<String>,
+    #[serde(default, rename = "platform")]
+    pub platforms: Vec<String>,
     #[serde(rename = "live")]
     pub is_live: Option<bool>,
     pub group: Option<String>,
     #[serde(default)]
     pub labels: HashMap<String, String>,
     pub search: Option<String>,
-    pub language: Option<String>,
-    pub category: Option<String>,
-    pub tag: Option<String>,
+    #[serde(default, rename = "language")]
+    pub languages: Vec<String>,
+    #[serde(default, rename = "category")]
+    pub categories: Vec<String>,
+    #[serde(default, rename = "tag")]
+    pub tags: Vec<String>,
     pub min_viewers: Option<u64>,
     pub max_viewers: Option<u64>,
     pub sort: Option<String>,
@@ -85,14 +94,14 @@ pub async fn list_streams(
     debug!(?query, "Listing streams");
 
     let stream_query = StreamQuery {
-        platform: query.platform,
+        platforms: query.platforms,
         is_live: query.is_live,
         group: query.group,
         labels: query.labels,
         search: query.search,
-        language: query.language,
-        category: query.category,
-        tag: query.tag,
+        languages: query.languages,
+        categories: query.categories,
+        tags: query.tags,
         min_viewers: query.min_viewers,
         max_viewers: query.max_viewers,
         sort: query.sort,

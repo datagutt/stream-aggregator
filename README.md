@@ -72,8 +72,8 @@ curl -X POST http://localhost:8080/api/v1/streamers \
 # All streams
 curl http://localhost:8080/api/v1/streams
 
-# By platform
-curl http://localhost:8080/api/v1/streams?platform=twitch
+# By platform (multi-value via bracket notation)
+curl "http://localhost:8080/api/v1/streams?platform[]=twitch&platform[]=youtube"
 
 # Health check
 curl http://localhost:8080/health

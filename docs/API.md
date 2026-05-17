@@ -23,15 +23,16 @@ Retrieve all streams with optional filtering and pagination.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `platform` | string | Filter by platform (e.g., `twitch`, `youtube`) |
+| `platform[]` | string | Filter by platform. Repeat for multi (`?platform[]=twitch&platform[]=youtube`) or use indexed form (`?platform[0]=twitch&platform[1]=youtube`). A single value also works (`?platform[]=twitch`). |
 | `live` | boolean | Filter by live status (`true` or `false`) |
 | `group` | string | Filter by group/team name |
 | `labels[key]` | string | Filter by labels (repeat parameter for multiple: `?labels[country]=no&labels[team]=vikings`) |
 | `search` | string | Search in display name and title |
 | `min_viewers` | integer | Minimum viewer count |
 | `max_viewers` | integer | Maximum viewer count |
-| `category` | string | Filter by game/category |
-| `language` | string | Filter by stream language |
+| `category[]` | string | Filter by game/category. Multi-value via `?category[]=Fortnite&category[]=Valorant`. |
+| `language[]` | string | Filter by stream language. Multi-value via `?language[]=no&language[]=sv`. |
+| `tag[]` | string | Filter by stream tags. A stream matches when it contains at least one of the requested tags. |
 | `sort` | string | Sort field: `viewers`, `name`, `platform`, `fetched` (when we last polled, alias `updated`), `live` (when streamer was last observed live). Default: `viewers`. |
 | `order` | string | Sort order: `asc` or `desc` (default: `desc`) |
 | `page` | integer | Page number (default: 1) |
@@ -83,7 +84,10 @@ Retrieve all streams with optional filtering and pagination.
 curl "http://localhost:8080/api/v1/streams?live=true"
 
 # Get Twitch streams sorted by viewers
-curl "http://localhost:8080/api/v1/streams?platform=twitch&sort=viewers&order=desc"
+curl "http://localhost:8080/api/v1/streams?platform[]=twitch&sort=viewers&order=desc"
+
+# Multi-platform + multi-language (Scandinavian directory)
+curl "http://localhost:8080/api/v1/streams?platform[]=twitch&platform[]=youtube&language[]=no&language[]=sv"
 
 # Search for streams
 curl "http://localhost:8080/api/v1/streams?search=fortnite&live=true"

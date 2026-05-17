@@ -92,11 +92,9 @@ impl StreamStore for MemoryStore {
             .iter()
             .map(|entry| entry.value().clone())
             .filter(|stream| {
-                // Filter by platform
-                if let Some(ref platform) = query.platform {
-                    if &stream.platform != platform {
-                        return false;
-                    }
+                // Filter by platforms (any-of)
+                if !query.platforms.is_empty() && !query.platforms.contains(&stream.platform) {
+                    return false;
                 }
 
                 // Filter by live status
@@ -148,25 +146,27 @@ impl StreamStore for MemoryStore {
                     }
                 }
 
-                // Filter by language
-                if let Some(ref language) = query.language {
-                    if stream.language.as_ref() != Some(language) {
-                        return false;
+                // Filter by languages (any-of)
+                if !query.languages.is_empty() {
+                    match stream.language.as_ref() {
+                        Some(lang) if query.languages.contains(lang) => {}
+                        _ => return false,
                     }
                 }
 
-                // Filter by category
-                if let Some(ref category) = query.category {
-                    if stream.category.as_ref() != Some(category) {
-                        return false;
+                // Filter by categories (any-of)
+                if !query.categories.is_empty() {
+                    match stream.category.as_ref() {
+                        Some(cat) if query.categories.contains(cat) => {}
+                        _ => return false,
                     }
                 }
 
-                // Filter by tag
-                if let Some(ref tag) = query.tag {
-                    if !stream.tags.contains(tag) {
-                        return false;
-                    }
+                // Filter by tags (stream matches when it contains AT LEAST ONE of the requested tags)
+                if !query.tags.is_empty()
+                    && !query.tags.iter().any(|t| stream.tags.contains(t))
+                {
+                    return false;
                 }
 
                 // Filter by minimum viewers
@@ -456,6 +456,69 @@ mod tests {
             .await
             .unwrap();
         assert!(deleted.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_multi_value_filters() {
+        let store = MemoryStore::new();
+
+        let mut a = StreamInfo::new("twitch", "a", "Alice");
+        a.language = Some("no".into());
+        a.category = Some("Just Chatting".into());
+        a.tags = vec!["nordic".into()];
+        a.is_live = true;
+
+        let mut b = StreamInfo::new("youtube", "b", "Bob");
+        b.language = Some("sv".into());
+        b.category = Some("Music".into());
+        b.tags = vec!["acoustic".into(), "nordic".into()];
+        b.is_live = true;
+
+        let mut c = StreamInfo::new("kick", "c", "Cara");
+        c.language = Some("en".into());
+        c.tags = vec!["fps".into()];
+        c.is_live = true;
+
+        for s in [&a, &b, &c] {
+            store.upsert_stream(s).await.unwrap();
+        }
+
+        // Scandinavian directory: two languages
+        let page = store
+            .get_streams(&StreamQuery {
+                languages: vec!["no".into(), "sv".into()],
+                ..Default::default()
+            })
+            .await
+            .unwrap();
+        assert_eq!(page.total, 2);
+
+        // Two platforms
+        let page = store
+            .get_streams(&StreamQuery {
+                platforms: vec!["twitch".into(), "kick".into()],
+                ..Default::default()
+            })
+            .await
+            .unwrap();
+        assert_eq!(page.total, 2);
+
+        // Any-of tags
+        let page = store
+            .get_streams(&StreamQuery {
+                tags: vec!["nordic".into(), "fps".into()],
+                ..Default::default()
+            })
+            .await
+            .unwrap();
+        assert_eq!(page.total, 3);
+
+        // Empty vectors mean "no filter"
+        let page = store
+            .get_streams(&StreamQuery::default())
+            .await
+            .unwrap();
+        assert_eq!(page.total, 3);
     }
 
     #[tokio::test]
