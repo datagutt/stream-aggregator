@@ -217,7 +217,11 @@ async fn scrape_platform(
                     "{}: {} is {}",
                     platform_id,
                     stream_info.display_name,
-                    if stream_info.is_live { "LIVE" } else { "offline" }
+                    if stream_info.is_live {
+                        "LIVE"
+                    } else {
+                        "offline"
+                    }
                 );
 
                 streams_to_store.push(stream_info);
