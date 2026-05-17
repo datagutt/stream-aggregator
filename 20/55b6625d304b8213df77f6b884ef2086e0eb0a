@@ -1,0 +1,21 @@
+web/middleware.ts
+  s_268a6765f9af95::t_15eb93c1aea483 1-88
+web/app/_not-configured/page.tsx
+  s_268a6765f9af95::t_6bf895b4004f99 1-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "2055b6625d304b8213df77f6b884ef2086e0eb0a",
+  "prompts": {},
+  "sessions": {
+    "s_268a6765f9af95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2acb2e8f-01ef-4732-8915-2195ceb85313",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thomas Lekanger <thomas.lekanger@hotmail.com>"
+    }
+  }
+}
