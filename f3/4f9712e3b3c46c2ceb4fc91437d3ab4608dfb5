@@ -1,0 +1,21 @@
+DESIGN.md
+  s_268a6765f9af95::t_0c0eda224dd2e1 1-190
+PRODUCT.md
+  s_268a6765f9af95::t_5a754b68e4259c 1-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "f34f9712e3b3c46c2ceb4fc91437d3ab4608dfb5",
+  "prompts": {},
+  "sessions": {
+    "s_268a6765f9af95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2acb2e8f-01ef-4732-8915-2195ceb85313",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thomas Lekanger <thomas.lekanger@hotmail.com>"
+    }
+  }
+}
