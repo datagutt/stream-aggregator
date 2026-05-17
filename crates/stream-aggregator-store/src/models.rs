@@ -5,11 +5,14 @@ use diesel::prelude::*;
 use serde_json;
 use std::collections::HashMap;
 
+use std::str::FromStr;
+
 use stream_aggregator_core::models::{
-    DiscoveryFilters, DiscoveryRule, StreamId, StreamInfo, StreamerSource, TrackedStreamer,
+    Community, CommunityFilter, DiscoveryFilters, DiscoveryRule, StreamId, StreamInfo,
+    StreamerSource, ThemeMode, TrackedStreamer,
 };
 
-use crate::schema::{discovery_rules, streams, tracked_streamers};
+use crate::schema::{communities, community_domains, discovery_rules, streams, tracked_streamers};
 
 // ===== Stream Models =====
 
@@ -365,4 +368,112 @@ impl<'a> UpdateDiscoveryRule<'a> {
             last_run_at,
         })
     }
+}
+
+// ===== Community Models =====
+
+#[derive(Debug, Clone, Queryable, Selectable)]
+#[diesel(table_name = communities)]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+pub struct CommunityRow {
+    pub slug: String,
+    pub name: String,
+    pub tagline: Option<String>,
+    pub accent: String,
+    pub accent_contrast: Option<String>,
+    pub logo_url: Option<String>,
+    pub default_theme: String,
+    pub filter: String,
+    pub about_md: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Clone, Insertable, AsChangeset)]
+#[diesel(table_name = communities)]
+pub struct NewCommunity<'a> {
+    pub slug: &'a str,
+    pub name: &'a str,
+    pub tagline: Option<&'a str>,
+    pub accent: &'a str,
+    pub accent_contrast: Option<&'a str>,
+    pub logo_url: Option<&'a str>,
+    pub default_theme: &'a str,
+    pub filter: String,
+    pub about_md: Option<&'a str>,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+impl CommunityRow {
+    /// Convert database row to Community (without domains; caller hydrates them).
+    pub fn to_community(&self) -> Result<Community, serde_json::Error> {
+        let filter: CommunityFilter =
+            serde_json::from_str(&self.filter).unwrap_or_default();
+
+        let default_theme = ThemeMode::from_str(&self.default_theme)
+            .unwrap_or(ThemeMode::Dark);
+
+        let created_at = DateTime::parse_from_rfc3339(&self.created_at)
+            .map(|dt| dt.with_timezone(&Utc))
+            .unwrap_or_else(|_| Utc::now());
+
+        let updated_at = DateTime::parse_from_rfc3339(&self.updated_at)
+            .map(|dt| dt.with_timezone(&Utc))
+            .unwrap_or_else(|_| Utc::now());
+
+        Ok(Community {
+            slug: self.slug.clone(),
+            name: self.name.clone(),
+            tagline: self.tagline.clone(),
+            accent: self.accent.clone(),
+            accent_contrast: self.accent_contrast.clone(),
+            logo_url: self.logo_url.clone(),
+            default_theme,
+            domains: Vec::new(),
+            filter,
+            about_md: self.about_md.clone(),
+            created_at,
+            updated_at,
+        })
+    }
+}
+
+impl<'a> NewCommunity<'a> {
+    pub fn from_community(c: &'a Community) -> Result<Self, serde_json::Error> {
+        let filter = serde_json::to_string(&c.filter)?;
+        Ok(Self {
+            slug: &c.slug,
+            name: &c.name,
+            tagline: c.tagline.as_deref(),
+            accent: &c.accent,
+            accent_contrast: c.accent_contrast.as_deref(),
+            logo_url: c.logo_url.as_deref(),
+            default_theme: match c.default_theme {
+                ThemeMode::Dark => "dark",
+                ThemeMode::Light => "light",
+            },
+            filter,
+            about_md: c.about_md.as_deref(),
+            created_at: c.created_at.to_rfc3339(),
+            updated_at: c.updated_at.to_rfc3339(),
+        })
+    }
+}
+
+#[derive(Debug, Clone, Queryable, Selectable)]
+#[diesel(table_name = community_domains)]
+#[diesel(check_for_backend(diesel::sqlite::Sqlite))]
+pub struct CommunityDomainRow {
+    pub host: String,
+    pub slug: String,
+    pub created_at: String,
+}
+
+#[derive(Debug, Clone, Insertable)]
+#[diesel(table_name = community_domains)]
+pub struct NewCommunityDomain<'a> {
+    pub host: &'a str,
+    pub slug: &'a str,
+    pub created_at: String,
 }

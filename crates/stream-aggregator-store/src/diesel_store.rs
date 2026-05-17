@@ -12,7 +12,7 @@ use tracing::{debug, trace};
 use stream_aggregator_core::{errors::StoreError, models::*, traits::StreamStore};
 
 use crate::models::*;
-use crate::schema::{discovery_rules, streams, tracked_streamers};
+use crate::schema::{communities, community_domains, discovery_rules, streams, tracked_streamers};
 
 type DbPool = Pool<ConnectionManager<SqliteConnection>>;
 
@@ -794,6 +794,241 @@ impl StreamStore for DieselStore {
         .await
         .map_err(|e| StoreError::QueryError(format!("Task join error: {}", e)))?
     }
+
+    // ===== Community Operations =====
+
+    async fn list_communities(&self) -> Result<Vec<Community>, StoreError> {
+        let pool = Arc::clone(&self.pool);
+
+        tokio::task::spawn_blocking(move || {
+            let mut conn = pool
+                .get()
+                .map_err(|e| StoreError::ConnectionError(e.to_string()))?;
+
+            let rows: Vec<CommunityRow> = communities::table
+                .select(CommunityRow::as_select())
+                .order(communities::updated_at.desc())
+                .load(&mut conn)
+                .map_err(|e| StoreError::QueryError(e.to_string()))?;
+
+            let mut out = Vec::with_capacity(rows.len());
+            for row in rows {
+                let mut c = row
+                    .to_community()
+                    .map_err(|e| StoreError::SerializationError(e.to_string()))?;
+                c.domains = community_domains::table
+                    .filter(community_domains::slug.eq(&c.slug))
+                    .select(community_domains::host)
+                    .load::<String>(&mut conn)
+                    .map_err(|e| StoreError::QueryError(e.to_string()))?;
+                out.push(c);
+            }
+            Ok(out)
+        })
+        .await
+        .map_err(|e| StoreError::QueryError(format!("Task join error: {}", e)))?
+    }
+
+    async fn get_community(&self, slug: &str) -> Result<Option<Community>, StoreError> {
+        let slug = slug.to_string();
+        let pool = Arc::clone(&self.pool);
+
+        tokio::task::spawn_blocking(move || {
+            let mut conn = pool
+                .get()
+                .map_err(|e| StoreError::ConnectionError(e.to_string()))?;
+
+            let row: Option<CommunityRow> = communities::table
+                .find(&slug)
+                .select(CommunityRow::as_select())
+                .first(&mut conn)
+                .optional()
+                .map_err(|e| StoreError::QueryError(e.to_string()))?;
+
+            match row {
+                Some(r) => {
+                    let mut c = r
+                        .to_community()
+                        .map_err(|e| StoreError::SerializationError(e.to_string()))?;
+                    c.domains = community_domains::table
+                        .filter(community_domains::slug.eq(&c.slug))
+                        .select(community_domains::host)
+                        .load::<String>(&mut conn)
+                        .map_err(|e| StoreError::QueryError(e.to_string()))?;
+                    Ok(Some(c))
+                }
+                None => Ok(None),
+            }
+        })
+        .await
+        .map_err(|e| StoreError::QueryError(format!("Task join error: {}", e)))?
+    }
+
+    async fn get_community_by_domain(
+        &self,
+        host: &str,
+    ) -> Result<Option<Community>, StoreError> {
+        let host = host.to_string();
+        let pool = Arc::clone(&self.pool);
+
+        tokio::task::spawn_blocking(move || {
+            let mut conn = pool
+                .get()
+                .map_err(|e| StoreError::ConnectionError(e.to_string()))?;
+
+            let resolved: Option<String> = community_domains::table
+                .find(&host)
+                .select(community_domains::slug)
+                .first(&mut conn)
+                .optional()
+                .map_err(|e| StoreError::QueryError(e.to_string()))?;
+
+            let Some(slug) = resolved else {
+                return Ok(None);
+            };
+
+            let row: Option<CommunityRow> = communities::table
+                .find(&slug)
+                .select(CommunityRow::as_select())
+                .first(&mut conn)
+                .optional()
+                .map_err(|e| StoreError::QueryError(e.to_string()))?;
+
+            match row {
+                Some(r) => {
+                    let mut c = r
+                        .to_community()
+                        .map_err(|e| StoreError::SerializationError(e.to_string()))?;
+                    c.domains = community_domains::table
+                        .filter(community_domains::slug.eq(&c.slug))
+                        .select(community_domains::host)
+                        .load::<String>(&mut conn)
+                        .map_err(|e| StoreError::QueryError(e.to_string()))?;
+                    Ok(Some(c))
+                }
+                None => Ok(None),
+            }
+        })
+        .await
+        .map_err(|e| StoreError::QueryError(format!("Task join error: {}", e)))?
+    }
+
+    async fn upsert_community(&self, community: &Community) -> Result<Community, StoreError> {
+        let incoming = community.clone();
+        let pool = Arc::clone(&self.pool);
+
+        tokio::task::spawn_blocking(move || {
+            let mut conn = pool
+                .get()
+                .map_err(|e| StoreError::ConnectionError(e.to_string()))?;
+
+            // Serialize once outside the transaction (failures here are
+            // SerializationError, not DB errors).
+            let result: Result<Community, diesel::result::Error> =
+                conn.transaction::<_, diesel::result::Error, _>(|conn| {
+                    // Resolve created_at: keep prior if exists, otherwise stamp now.
+                    let prior: Option<CommunityRow> = communities::table
+                        .find(&incoming.slug)
+                        .select(CommunityRow::as_select())
+                        .first(conn)
+                        .optional()?;
+
+                    let now = Utc::now();
+                    let mut final_community = incoming.clone();
+                    final_community.updated_at = now;
+                    final_community.created_at = match &prior {
+                        Some(r) => DateTime::parse_from_rfc3339(&r.created_at)
+                            .map(|dt| dt.with_timezone(&Utc))
+                            .unwrap_or(now),
+                        None => now,
+                    };
+
+                    // Reject any incoming domain already claimed by a different slug.
+                    if !final_community.domains.is_empty() {
+                        let conflicts: Vec<(String, String)> = community_domains::table
+                            .filter(community_domains::host.eq_any(&final_community.domains))
+                            .filter(community_domains::slug.ne(&final_community.slug))
+                            .select((community_domains::host, community_domains::slug))
+                            .load(conn)?;
+                        if let Some((host, owner)) = conflicts.into_iter().next() {
+                            return Err(diesel::result::Error::RollbackTransaction)
+                                .map_err(|_| {
+                                    diesel::result::Error::QueryBuilderError(
+                                        format!(
+                                            "domain '{host}' is already claimed by community '{owner}'"
+                                        )
+                                        .into(),
+                                    )
+                                });
+                        }
+                    }
+
+                    let new_row = NewCommunity::from_community(&final_community).map_err(|e| {
+                        diesel::result::Error::SerializationError(Box::new(e))
+                    })?;
+
+                    diesel::replace_into(communities::table)
+                        .values(&new_row)
+                        .execute(conn)?;
+
+                    // Atomic replace of the domain set for this slug.
+                    diesel::delete(
+                        community_domains::table
+                            .filter(community_domains::slug.eq(&final_community.slug)),
+                    )
+                    .execute(conn)?;
+
+                    if !final_community.domains.is_empty() {
+                        let created_at = now.to_rfc3339();
+                        let new_domain_rows: Vec<NewCommunityDomain> = final_community
+                            .domains
+                            .iter()
+                            .map(|host| NewCommunityDomain {
+                                host,
+                                slug: &final_community.slug,
+                                created_at: created_at.clone(),
+                            })
+                            .collect();
+                        diesel::insert_into(community_domains::table)
+                            .values(&new_domain_rows)
+                            .execute(conn)?;
+                    }
+
+                    Ok(final_community)
+                });
+
+            result.map_err(|e| match e {
+                diesel::result::Error::QueryBuilderError(msg) => {
+                    StoreError::QueryError(msg.to_string())
+                }
+                diesel::result::Error::SerializationError(e) => {
+                    StoreError::SerializationError(e.to_string())
+                }
+                other => StoreError::QueryError(other.to_string()),
+            })
+        })
+        .await
+        .map_err(|e| StoreError::QueryError(format!("Task join error: {}", e)))?
+    }
+
+    async fn delete_community(&self, slug: &str) -> Result<bool, StoreError> {
+        let slug = slug.to_string();
+        let pool = Arc::clone(&self.pool);
+
+        tokio::task::spawn_blocking(move || {
+            let mut conn = pool
+                .get()
+                .map_err(|e| StoreError::ConnectionError(e.to_string()))?;
+
+            // ON DELETE CASCADE on community_domains.slug cleans the join table.
+            let n = diesel::delete(communities::table.find(&slug))
+                .execute(&mut conn)
+                .map_err(|e| StoreError::QueryError(e.to_string()))?;
+            Ok(n > 0)
+        })
+        .await
+        .map_err(|e| StoreError::QueryError(format!("Task join error: {}", e)))?
+    }
 }
 
 #[cfg(test)]
@@ -896,6 +1131,67 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(page.total, 3);
+    }
+
+    #[tokio::test]
+    async fn test_diesel_community_crud() {
+        let store = DieselStore::memory().unwrap();
+
+        let mut c = Community::new("lsn", "LiveStreamNorge", "0.58 0.20 250");
+        c.domains = vec!["lsn.local".into(), "livestreamnorge.test".into()];
+        c.filter.languages = vec!["no".into()];
+
+        let created = store.upsert_community(&c).await.unwrap();
+        assert_eq!(created.slug, "lsn");
+        assert_eq!(created.domains.len(), 2);
+
+        let all = store.list_communities().await.unwrap();
+        assert_eq!(all.len(), 1);
+        assert_eq!(all[0].domains.len(), 2);
+
+        let got = store.get_community("lsn").await.unwrap().unwrap();
+        assert_eq!(got.name, "LiveStreamNorge");
+        assert_eq!(got.filter.languages, vec!["no".to_string()]);
+
+        let by_host = store
+            .get_community_by_domain("lsn.local")
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(by_host.slug, "lsn");
+        assert!(store
+            .get_community_by_domain("missing.test")
+            .await
+            .unwrap()
+            .is_none());
+
+        // Update: replace the domain set
+        let mut updated = got.clone();
+        updated.tagline = Some("Norske strømmere live nå".into());
+        updated.domains = vec!["lsn.local".into()];
+        let saved = store.upsert_community(&updated).await.unwrap();
+        assert_eq!(saved.tagline.as_deref(), Some("Norske strømmere live nå"));
+        assert_eq!(saved.domains, vec!["lsn.local".to_string()]);
+        assert!(store
+            .get_community_by_domain("livestreamnorge.test")
+            .await
+            .unwrap()
+            .is_none());
+
+        // Domain conflict: different community can't grab lsn.local
+        let mut other = Community::new("sv", "SwedishStreamers", "0.78 0.16 95");
+        other.domains = vec!["lsn.local".into()];
+        let err = store.upsert_community(&other).await.unwrap_err();
+        assert!(format!("{err}").contains("already claimed"));
+
+        // Delete cascades to community_domains via FK
+        assert!(store.delete_community("lsn").await.unwrap());
+        assert!(store
+            .get_community_by_domain("lsn.local")
+            .await
+            .unwrap()
+            .is_none());
+        assert!(!store.delete_community("lsn").await.unwrap());
     }
 
     #[tokio::test]

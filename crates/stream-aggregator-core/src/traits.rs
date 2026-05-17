@@ -254,4 +254,29 @@ pub trait StreamStore: Send + Sync + 'static {
     /// # Arguments
     /// * `id` - Rule ID
     async fn remove_discovery_rule(&self, id: &str) -> Result<(), StoreError>;
+
+    // ===== Community Operations =====
+
+    /// List all communities (with domains hydrated).
+    async fn list_communities(&self) -> Result<Vec<Community>, StoreError>;
+
+    /// Get one community by slug, with domains hydrated.
+    async fn get_community(&self, slug: &str) -> Result<Option<Community>, StoreError>;
+
+    /// Resolve a hostname to its owning community. Used by the frontend
+    /// middleware on every request, so implementations should keep this cheap
+    /// (single primary-key lookup on `community_domains`).
+    async fn get_community_by_domain(
+        &self,
+        host: &str,
+    ) -> Result<Option<Community>, StoreError>;
+
+    /// Insert or update a community. `community.domains` is treated as the
+    /// authoritative set: existing rows in `community_domains` for this slug
+    /// are replaced atomically.
+    async fn upsert_community(&self, community: &Community) -> Result<Community, StoreError>;
+
+    /// Delete a community by slug. Cascades through `community_domains` via the
+    /// foreign key. Returns true if a row was deleted.
+    async fn delete_community(&self, slug: &str) -> Result<bool, StoreError>;
 }

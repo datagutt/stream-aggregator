@@ -439,6 +439,119 @@ pub struct StreamPage {
     pub total_pages: usize,
 }
 
+/// Default theme for a community's public surface.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ThemeMode {
+    Dark,
+    Light,
+}
+
+impl std::fmt::Display for ThemeMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ThemeMode::Dark => write!(f, "dark"),
+            ThemeMode::Light => write!(f, "light"),
+        }
+    }
+}
+
+impl std::str::FromStr for ThemeMode {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "dark" => Ok(ThemeMode::Dark),
+            "light" => Ok(ThemeMode::Light),
+            other => Err(format!("invalid theme: {other}")),
+        }
+    }
+}
+
+/// Filter recipe that defines which slice of the global stream pool a
+/// community surfaces. Every field is "any-of"; the empty/missing form means
+/// "no constraint." Constraints are combined with AND across fields.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct CommunityFilter {
+    #[serde(default)]
+    pub platforms: Vec<String>,
+    #[serde(default)]
+    pub languages: Vec<String>,
+    #[serde(default)]
+    pub categories: Vec<String>,
+    #[serde(default)]
+    pub tags: Vec<String>,
+    #[serde(default)]
+    pub groups: Vec<String>,
+    #[serde(default)]
+    pub labels: HashMap<String, String>,
+    #[serde(default)]
+    pub min_viewers: Option<u64>,
+}
+
+/// A brandable directory tenant. Communities are persisted in the backend and
+/// consumed by the Next.js frontend; the host->community map is used by the
+/// frontend middleware to render the right brand on the right domain.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Community {
+    /// Stable, URL-safe identifier (e.g. "livestreamnorge").
+    pub slug: String,
+
+    /// Display name (e.g. "LiveStreamNorge").
+    pub name: String,
+
+    /// Optional short subtitle.
+    pub tagline: Option<String>,
+
+    /// OKLCH triplet "L C H" stored as text (e.g. "0.58 0.20 250").
+    /// The frontend wraps this in `oklch(...)` when applying to CSS.
+    pub accent: String,
+
+    /// Optional OKLCH triplet for foreground contrast against the accent.
+    pub accent_contrast: Option<String>,
+
+    /// Optional logo URL.
+    pub logo_url: Option<String>,
+
+    /// Default theme for visitors that haven't explicitly toggled.
+    pub default_theme: ThemeMode,
+
+    /// Hostnames that map to this community. Populated by the store from the
+    /// `community_domains` join table on read.
+    #[serde(default)]
+    pub domains: Vec<String>,
+
+    /// Filter recipe that selects this community's slice of streams.
+    pub filter: CommunityFilter,
+
+    /// Optional markdown body for the community's About page.
+    pub about_md: Option<String>,
+
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl Community {
+    /// Create a new minimal community with sensible defaults.
+    pub fn new(slug: impl Into<String>, name: impl Into<String>, accent: impl Into<String>) -> Self {
+        let now = Utc::now();
+        Self {
+            slug: slug.into(),
+            name: name.into(),
+            tagline: None,
+            accent: accent.into(),
+            accent_contrast: None,
+            logo_url: None,
+            default_theme: ThemeMode::Dark,
+            domains: Vec::new(),
+            filter: CommunityFilter::default(),
+            about_md: None,
+            created_at: now,
+            updated_at: now,
+        }
+    }
+}
+
 /// Query parameters for listing tracked streamers
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct TrackedStreamerQuery {

@@ -17,6 +17,10 @@ pub struct MemoryStore {
     streams: Arc<DashMap<String, StreamInfo>>,
     tracked_streamers: Arc<DashMap<String, TrackedStreamer>>,
     discovery_rules: Arc<DashMap<String, DiscoveryRule>>,
+    /// Communities by slug. `domains` field on each Community is the source of truth.
+    communities: Arc<DashMap<String, Community>>,
+    /// Reverse index: host -> slug, kept in sync with `communities`.
+    community_domain_index: Arc<DashMap<String, String>>,
 }
 
 impl MemoryStore {
@@ -27,6 +31,8 @@ impl MemoryStore {
             streams: Arc::new(DashMap::new()),
             tracked_streamers: Arc::new(DashMap::new()),
             discovery_rules: Arc::new(DashMap::new()),
+            communities: Arc::new(DashMap::new()),
+            community_domain_index: Arc::new(DashMap::new()),
         }
     }
 
@@ -399,6 +405,75 @@ impl StreamStore for MemoryStore {
         self.discovery_rules.remove(id);
         Ok(())
     }
+
+    // ===== Community Operations =====
+
+    async fn list_communities(&self) -> Result<Vec<Community>, StoreError> {
+        Ok(self
+            .communities
+            .iter()
+            .map(|entry| entry.value().clone())
+            .collect())
+    }
+
+    async fn get_community(&self, slug: &str) -> Result<Option<Community>, StoreError> {
+        Ok(self.communities.get(slug).map(|entry| entry.value().clone()))
+    }
+
+    async fn get_community_by_domain(
+        &self,
+        host: &str,
+    ) -> Result<Option<Community>, StoreError> {
+        let Some(slug) = self.community_domain_index.get(host).map(|s| s.clone()) else {
+            return Ok(None);
+        };
+        Ok(self.communities.get(&slug).map(|entry| entry.value().clone()))
+    }
+
+    async fn upsert_community(&self, community: &Community) -> Result<Community, StoreError> {
+        let now = Utc::now();
+        let mut stored = community.clone();
+        stored.updated_at = now;
+        if !self.communities.contains_key(&stored.slug) {
+            stored.created_at = now;
+        } else if let Some(existing) = self.communities.get(&stored.slug) {
+            stored.created_at = existing.created_at;
+        }
+
+        // Atomically replace this community's entries in the domain index.
+        // Reject if any incoming domain is already claimed by a different community.
+        for host in &stored.domains {
+            if let Some(existing_slug) = self.community_domain_index.get(host) {
+                if existing_slug.value() != &stored.slug {
+                    return Err(StoreError::QueryError(format!(
+                        "domain '{host}' is already claimed by community '{}'",
+                        existing_slug.value()
+                    )));
+                }
+            }
+        }
+
+        // Drop any previously-mapped hosts no longer in the incoming set.
+        let new_hosts: std::collections::HashSet<&String> = stored.domains.iter().collect();
+        self.community_domain_index
+            .retain(|_, slug| slug != &stored.slug);
+        for host in &stored.domains {
+            let _ = new_hosts;
+            self.community_domain_index
+                .insert(host.clone(), stored.slug.clone());
+        }
+
+        self.communities.insert(stored.slug.clone(), stored.clone());
+        Ok(stored)
+    }
+
+    async fn delete_community(&self, slug: &str) -> Result<bool, StoreError> {
+        let existed = self.communities.remove(slug).is_some();
+        // Cascade through the domain index.
+        self.community_domain_index
+            .retain(|_, mapped_slug| mapped_slug != slug);
+        Ok(existed)
+    }
 }
 
 #[cfg(test)]
@@ -519,6 +594,69 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(page.total, 3);
+    }
+
+    #[tokio::test]
+    async fn test_community_crud() {
+        let store = MemoryStore::new();
+
+        let mut c = Community::new("lsn", "LiveStreamNorge", "0.58 0.20 250");
+        c.domains = vec!["lsn.local".into(), "livestreamnorge.test".into()];
+        c.filter.languages = vec!["no".into()];
+
+        // Create
+        let created = store.upsert_community(&c).await.unwrap();
+        assert_eq!(created.slug, "lsn");
+        assert_eq!(created.domains.len(), 2);
+
+        // List
+        let all = store.list_communities().await.unwrap();
+        assert_eq!(all.len(), 1);
+
+        // Get by slug
+        let got = store.get_community("lsn").await.unwrap().unwrap();
+        assert_eq!(got.name, "LiveStreamNorge");
+
+        // Get by domain
+        let by_host = store
+            .get_community_by_domain("lsn.local")
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(by_host.slug, "lsn");
+        assert!(store
+            .get_community_by_domain("missing.test")
+            .await
+            .unwrap()
+            .is_none());
+
+        // Update (replace domains)
+        let mut updated = got.clone();
+        updated.tagline = Some("Norske strømmere live nå".into());
+        updated.domains = vec!["lsn.local".into()];
+        let saved = store.upsert_community(&updated).await.unwrap();
+        assert_eq!(saved.tagline.as_deref(), Some("Norske strømmere live nå"));
+        assert_eq!(saved.domains, vec!["lsn.local".to_string()]);
+        assert!(store
+            .get_community_by_domain("livestreamnorge.test")
+            .await
+            .unwrap()
+            .is_none());
+
+        // Domain conflict: a different community can't claim lsn.local
+        let mut other = Community::new("sv", "SwedishStreamers", "0.78 0.16 95");
+        other.domains = vec!["lsn.local".into()];
+        let err = store.upsert_community(&other).await.unwrap_err();
+        assert!(format!("{err}").contains("already claimed"));
+
+        // Delete cascades through the domain index
+        assert!(store.delete_community("lsn").await.unwrap());
+        assert!(store
+            .get_community_by_domain("lsn.local")
+            .await
+            .unwrap()
+            .is_none());
+        assert!(!store.delete_community("lsn").await.unwrap());
     }
 
     #[tokio::test]
