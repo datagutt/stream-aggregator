@@ -2,6 +2,7 @@
 //!
 //! Run with: cargo run --example auth_example
 
+use std::collections::HashMap;
 use std::sync::Arc;
 use stream_aggregator_api::{create_router_with_auth, AuthConfig};
 use stream_aggregator_store::MemoryStore;
@@ -11,9 +12,14 @@ async fn main() {
     // Create a memory store
     let store = Arc::new(MemoryStore::new());
 
+    // No providers needed for an auth-only demo; real apps would pass the
+    // registry built by stream-aggregator::providers::ProviderRegistry.
+    let providers = HashMap::new();
+
     // Example 1: No authentication (public access)
     println!("=== Example 1: Public Access (No Auth) ===");
-    let public_router = create_router_with_auth(store.clone(), AuthConfig::default());
+    let public_router =
+        create_router_with_auth(store.clone(), providers.clone(), AuthConfig::default());
     println!("Router created with public access");
     println!("- GET /api/v1/streams - Public (no auth required)");
     println!("- POST /api/v1/streamers - Public (no auth required)");
@@ -22,8 +28,11 @@ async fn main() {
     // Example 2: API keys required for write operations
     println!("=== Example 2: API Keys for Writes ===");
     let api_keys = vec!["secret-key-123".to_string(), "another-key-456".to_string()];
-    let write_auth_router =
-        create_router_with_auth(store.clone(), AuthConfig::new(api_keys.clone()));
+    let write_auth_router = create_router_with_auth(
+        store.clone(),
+        providers.clone(),
+        AuthConfig::new(api_keys.clone()),
+    );
     println!("Router created with API key authentication");
     println!("- GET /api/v1/streams - Public (no auth required)");
     println!("- POST /api/v1/streamers - Requires API key");
@@ -45,6 +54,7 @@ async fn main() {
     println!("=== Example 3: API Keys for All Operations ===");
     let full_auth_router = create_router_with_auth(
         store.clone(),
+        providers.clone(),
         AuthConfig::new(api_keys.clone()).require_all(),
     );
     println!("Router created with strict authentication");
@@ -70,7 +80,7 @@ async fn main() {
     println!("    AuthConfig::new(api_keys) // Protect writes");
     println!("}};");
     println!();
-    println!("let router = create_router_with_auth(store, auth_config);");
+    println!("let router = create_router_with_auth(store, providers, auth_config);");
     println!("```");
     println!();
 
