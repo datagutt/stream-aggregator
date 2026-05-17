@@ -1,0 +1,32 @@
+web/lib/color.ts
+  s_268a6765f9af95::t_38cb7b798ed318 1-62
+web/app/admin/communities/new/page.tsx
+  s_268a6765f9af95::t_89ed35f2fe4e6f 1-20
+web/app/admin/communities/page.tsx
+  s_268a6765f9af95::t_10bea589b1dbee 1-5,7-8,10-79
+  s_268a6765f9af95::t_5e44f6586e43e8 6,9
+web/components/admin/community-editor.tsx
+  s_268a6765f9af95::t_4b19206641e82b 415,417,420
+  s_268a6765f9af95::t_3c3b8287d26a03 1-414,416,418-419,421-533
+web/app/admin/communities/[slug]/page.tsx
+  s_268a6765f9af95::t_f0fb8bd2165fa6 1-34
+web/app/admin/communities/actions.ts
+  s_268a6765f9af95::t_25d0680e3c00a8 1-2,4-62
+  s_268a6765f9af95::t_9b455731a488dd 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "4e22b6647f20a0fb3cc4a86c22959b4569402503",
+  "prompts": {},
+  "sessions": {
+    "s_268a6765f9af95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2acb2e8f-01ef-4732-8915-2195ceb85313",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thomas Lekanger <thomas.lekanger@hotmail.com>"
+    }
+  }
+}
